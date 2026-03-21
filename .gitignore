@@ -1,3 +1,7 @@
+# MandateZ
+.turbo/
+.claude/
+
 # Logs
 logs
 *.log
