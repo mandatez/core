@@ -1,0 +1,53 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "MandateZ",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#3B82F6",
+    "light": "#60A5FA",
+    "dark": "#1E3A5F",
+    "background": {
+      "dark": "#0A0A0F"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/mandatez/core"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://docs.mandatez.com/quickstart"
+  },
+  "tabs": [
+    {
+      "name": "SDK Reference",
+      "url": "sdk"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "SDK Reference",
+      "pages": ["sdk/track"]
+    },
+    {
+      "group": "Protocol",
+      "pages": ["protocol/spec"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/mandatez/core"
+  },
+  "modeToggle": {
+    "default": "dark"
+  }
+}

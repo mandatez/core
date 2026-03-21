@@ -1,0 +1,415 @@
+---
+title: Protocol Specification
+description: The open MandateZ protocol standard — wire format, signing algorithm, policy semantics, and transport contract
+---
+
+# MandateZ Protocol Specification
+
+**Version:** 0.1.0
+**Status:** Draft
+**Date:** 2026-03-21
+**Authors:** MandateZ Contributors
+
+---
+
+## Abstract
+
+MandateZ is an open protocol for cryptographic identity, authorization, and audit logging
+of autonomous AI agents. It defines a vendor-neutral standard for proving which agent
+performed an action, enforcing what agents are permitted to do, and producing tamper-proof
+compliance audit trails.
+
+This specification defines the wire format, cryptographic operations, policy evaluation
+semantics, and human oversight behavior that any conforming implementation MUST support.
+
+---
+
+## 1. Terminology
+
+- **Agent**: An autonomous software entity (LLM-based or otherwise) that performs actions on behalf of an owner.
+- **Owner**: The individual or organization that controls one or more agents.
+- **Event**: A signed record of a single agent action.
+- **Policy**: An ordered set of rules that determine whether an action is allowed, blocked, or flagged.
+- **Oversight Gate**: A mechanism that pauses execution and requests human approval before proceeding.
+- **Transport**: The system that receives and stores signed events.
+
+The key words "MUST", "MUST NOT", "SHOULD", "SHOULD NOT", and "MAY" in this document
+are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
+
+---
+
+## 2. Agent Identity
+
+### 2.1 Agent ID Format
+
+An agent identifier MUST conform to the following format:
+
+```
+agent_id = "ag_" <nanoid>
+```
+
+- The prefix `ag_` is fixed and MUST be present.
+- `<nanoid>` is a 21-character string drawn from the alphabet `A-Za-z0-9_-` (URL-safe base64).
+- This provides 126 bits of entropy, sufficient for collision resistance at scale.
+
+**Regex:** `^ag_[A-Za-z0-9_-]{21}$`
+
+### 2.2 Cryptographic Keypair
+
+Each agent MUST possess an Ed25519 keypair:
+
+- **Public key**: 32 bytes, encoded as standard base64 (RFC 4648 Section 4).
+- **Private key**: 64 bytes (32-byte seed + 32-byte public key), encoded as standard base64.
+- The public key MUST be derivable from the private key (bytes 32-63 of the 64-byte secret key).
+
+Implementations MUST use Ed25519 as defined in [RFC 8032](https://www.rfc-editor.org/rfc/rfc8032).
+
+### 2.3 Identity Generation
+
+A conforming implementation MUST:
+
+1. Generate an Ed25519 keypair using a cryptographically secure random number generator.
+2. Assign a unique `agent_id` using the format defined in Section 2.1.
+3. Return the `agent_id`, base64-encoded `public_key`, and base64-encoded `private_key`.
+
+The private key MUST NOT be transmitted over the network or written to logs.
+
+---
+
+## 3. Agent Event Schema
+
+### 3.1 Event Structure
+
+Every agent action produces exactly one event. An event is a JSON object with the
+following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `event_id` | string (UUID v4) | Yes | Unique identifier for this event |
+| `agent_id` | string | Yes | Agent identifier (Section 2.1) |
+| `owner_id` | string | Yes | Owner identifier (non-empty) |
+| `timestamp` | string (ISO 8601) | Yes | UTC timestamp of the action |
+| `action_type` | enum | Yes | One of: `read`, `write`, `export`, `delete`, `call`, `payment` |
+| `resource` | string | Yes | What was accessed (e.g., `emails`, `api/stripe`) |
+| `outcome` | enum | Yes | One of: `allowed`, `blocked`, `flagged`, `pending_approval` |
+| `policy_id` | string \| null | Yes | ID of the matched policy rule, or null |
+| `metadata` | object | Yes | Arbitrary key-value context (defaults to `{}`) |
+| `signature` | string | Yes | Base64-encoded Ed25519 signature |
+| `public_key` | string | Yes | Base64-encoded Ed25519 public key of the signing agent |
+
+### 3.2 Action Types
+
+| Action | Semantics |
+|--------|-----------|
+| `read` | Agent accessed data without modifying it |
+| `write` | Agent created or modified data |
+| `export` | Agent moved data outside the system boundary |
+| `delete` | Agent permanently removed data |
+| `call` | Agent invoked an external API or service |
+| `payment` | Agent initiated a financial transaction |
+
+Implementations MUST NOT extend this enum without a protocol version bump.
+
+### 3.3 Outcomes
+
+| Outcome | Semantics |
+|---------|-----------|
+| `allowed` | Action was permitted and executed |
+| `blocked` | Action was denied by policy or oversight |
+| `flagged` | Action was permitted but marked for review |
+| `pending_approval` | Action is awaiting human approval |
+
+---
+
+## 4. Event Signing
+
+### 4.1 Canonicalization
+
+Before signing, the event MUST be canonicalized as follows:
+
+1. Construct a JSON object containing all event fields **except** `signature`.
+2. Serialize to a JSON string with keys sorted alphabetically at the top level.
+3. Encode the resulting string as UTF-8 bytes.
+
+**Pseudocode:**
+```
+canonical = JSON.stringify(event_without_signature, sorted_keys)
+message   = UTF8_ENCODE(canonical)
+```
+
+Implementations MUST use lexicographic key sorting to ensure deterministic output
+across platforms and languages.
+
+### 4.2 Signing
+
+1. Compute the Ed25519 detached signature over the canonical message bytes using the agent's private key.
+2. Base64-encode the 64-byte signature (standard base64, RFC 4648 Section 4).
+3. Set the `signature` field of the event to this value.
+4. Set the `public_key` field to the agent's base64-encoded public key.
+
+### 4.3 Verification
+
+To verify an event:
+
+1. Remove the `signature` field from the event.
+2. Canonicalize the remaining fields per Section 4.1.
+3. Base64-decode the `signature` and `public_key` fields.
+4. Verify the Ed25519 detached signature against the canonical message bytes and the public key.
+5. Return `true` if valid, `false` otherwise.
+
+A conforming verifier MUST return `false` (not throw an exception) on any error,
+including malformed base64, incorrect key length, or tampered data.
+
+### 4.4 Event Construction
+
+When creating a new event, the implementation MUST:
+
+1. Generate a new UUID v4 for `event_id`.
+2. Set `timestamp` to the current UTC time in ISO 8601 format.
+3. Derive `public_key` from the agent's private key.
+4. Canonicalize, sign, and attach the signature.
+5. Validate the complete event against the schema before returning.
+
+---
+
+## 5. Policy Engine
+
+### 5.1 Policy Structure
+
+A policy is an ordered collection of rules belonging to an owner:
+
+```json
+{
+  "id": "pol_example",
+  "owner_id": "org_acme",
+  "name": "Production Policy",
+  "rules": [
+    {
+      "id": "r1",
+      "action_types": ["export", "delete"],
+      "resource_pattern": "*",
+      "effect": "block"
+    }
+  ]
+}
+```
+
+### 5.2 Rule Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique rule identifier |
+| `action_types` | string[] | Action types this rule matches. `*` matches all types. |
+| `resource_pattern` | string | Glob pattern for resource matching (Section 5.3) |
+| `effect` | enum | One of: `allow`, `block`, `flag` |
+
+### 5.3 Resource Pattern Matching
+
+Resource patterns support three forms:
+
+| Pattern | Matches | Example |
+|---------|---------|---------|
+| Exact | The literal string | `emails` matches `emails` |
+| `*` (single wildcard) | Any single path segment | `api/*` matches `api/stripe` but NOT `api/stripe/charges` |
+| `**` (recursive wildcard) | Any number of path segments | `api/**` matches `api/stripe` and `api/stripe/charges` |
+| `*` (alone) | Everything | `*` matches any resource |
+
+Path segments are delimited by `/`.
+
+### 5.4 Evaluation Semantics
+
+1. Rules MUST be evaluated in declaration order.
+2. The first rule that matches both the `action_type` and `resource` wins.
+3. If no rule matches, the default outcome is `allowed`.
+4. Effect mapping: `allow` -> `allowed`, `block` -> `blocked`, `flag` -> `flagged`.
+5. Multiple policies are evaluated in the order they were added. First match across all policies wins.
+
+---
+
+## 6. Human Oversight Gate
+
+### 6.1 Configuration
+
+The oversight gate is configured with:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `require_human_approval` | string[] | Action types that trigger the gate |
+| `channels` | AlertChannel[] | Notification targets (Section 6.3) |
+| `timeout_seconds` | number | Seconds to wait for a human response |
+| `timeout_action` | enum | `block` or `allow` — applied when timeout expires |
+
+### 6.2 Gate Behavior
+
+When an action's `action_type` is in `require_human_approval`:
+
+1. **Fire alerts** to all configured channels. Channel failures MUST be collected, not thrown — one failing channel MUST NOT prevent others from firing.
+2. **Wait for human decision** by racing an approval callback against the timeout.
+3. **Resolve outcome**:
+   - If a human approves: `allowed`
+   - If a human rejects: `blocked`
+   - If timeout expires: apply `timeout_action` (`block` -> `blocked`, `allow` -> `allowed`)
+4. If no approval callback is provided, `timeout_action` MUST be applied immediately.
+
+### 6.3 Alert Channels
+
+An alert channel is any system that implements the `send(alert)` interface:
+
+```typescript
+interface AlertChannel {
+  send(alert: OversightAlert): Promise<void>;
+}
+```
+
+The protocol defines two standard channels:
+
+- **Slack**: POST to a webhook URL with mrkdwn-formatted text.
+- **Webhook**: POST the alert as JSON to an arbitrary URL.
+
+Implementations MAY define additional channels (email, PagerDuty, SMS, etc.).
+
+### 6.4 Integration with Policy
+
+The oversight gate operates **after** policy evaluation:
+
+1. If the policy engine returns `blocked`, the oversight gate is **skipped**.
+2. If the policy engine returns `allowed` or `flagged`, and the action type requires approval, the oversight gate fires.
+3. The oversight gate's outcome **overrides** the policy outcome.
+
+---
+
+## 7. Transport Contract
+
+### 7.1 Requirements
+
+A conforming transport MUST:
+
+1. Accept a fully signed, schema-validated `AgentEvent`.
+2. Persist the event durably.
+3. Return the event on success or throw/return an error on failure.
+4. MUST NOT modify the event payload (including signature).
+
+### 7.2 Supabase Reference Transport
+
+The reference transport inserts events into a PostgreSQL table via Supabase:
+
+| Event Field | Column | Type |
+|-------------|--------|------|
+| `event_id` | `id` | uuid (PK) |
+| `agent_id` | `agent_id` | text (FK -> agents) |
+| `owner_id` | `owner_id` | text |
+| `timestamp` | `timestamp` | timestamptz |
+| `action_type` | `action_type` | text |
+| `resource` | `resource` | text |
+| `outcome` | `outcome` | text |
+| `policy_id` | `policy_id` | text (nullable) |
+| `metadata` | `metadata` | jsonb |
+| `signature` | `signature` | text |
+| `public_key` | `public_key` | text |
+
+Row Level Security MUST be enabled so each owner sees only their own events.
+
+### 7.3 Alternative Transports
+
+Implementations MAY provide transports for other storage backends (S3, Kafka, filesystem, etc.)
+as long as they satisfy the contract in Section 7.1.
+
+---
+
+## 8. Client Integration Flow
+
+The full `track()` flow for a conforming client:
+
+```
+1. EVALUATE policy engine against (action_type, resource)
+2. IF policy outcome is "blocked" AND no explicit override:
+     -> set outcome = "blocked", skip oversight
+3. IF oversight gate is configured AND action_type requires approval:
+     -> fire alerts on all channels
+     -> race human response vs timeout
+     -> set outcome from oversight result
+4. CONSTRUCT event input (agent_id, owner_id, action_type, resource, outcome, policy_id, metadata)
+5. SIGN event (Section 4)
+6. EMIT event to transport (Section 7)
+7. RETURN signed event
+```
+
+---
+
+## 9. Security Considerations
+
+- Private keys MUST be stored securely and MUST NOT be transmitted or logged.
+- Event signatures provide tamper detection, not encryption. Event payloads are plaintext.
+- The `metadata` field MAY contain sensitive data. Implementations SHOULD apply appropriate access controls.
+- Transport channels (Supabase, webhooks) SHOULD use TLS.
+- Slack webhook URLs are bearer tokens and MUST be treated as secrets.
+
+---
+
+## 10. Versioning
+
+This specification follows [Semantic Versioning](https://semver.org/):
+
+- **Major**: Breaking changes to the event schema, signing algorithm, or policy semantics.
+- **Minor**: New action types, outcome types, or optional fields.
+- **Patch**: Clarifications and editorial fixes.
+
+The current version is **0.1.0** (pre-release, subject to change).
+
+---
+
+## Appendix A: Example Event
+
+```json
+{
+  "event_id": "550e8400-e29b-41d4-a716-446655440000",
+  "agent_id": "ag_V1StGXR8_Z5jdHi6B-myT",
+  "owner_id": "org_acme",
+  "timestamp": "2026-03-21T12:00:00.000Z",
+  "action_type": "read",
+  "resource": "emails",
+  "outcome": "allowed",
+  "policy_id": null,
+  "metadata": {},
+  "signature": "base64-encoded-ed25519-signature",
+  "public_key": "base64-encoded-ed25519-public-key"
+}
+```
+
+## Appendix B: Example Policy
+
+```json
+{
+  "id": "pol_production",
+  "owner_id": "org_acme",
+  "name": "Production Security Policy",
+  "rules": [
+    {
+      "id": "block_exports",
+      "action_types": ["export", "delete"],
+      "resource_pattern": "*",
+      "effect": "block"
+    },
+    {
+      "id": "flag_payments",
+      "action_types": ["payment"],
+      "resource_pattern": "api/*",
+      "effect": "flag"
+    },
+    {
+      "id": "allow_reads",
+      "action_types": ["read"],
+      "resource_pattern": "*",
+      "effect": "allow"
+    }
+  ]
+}
+```
+
+## Appendix C: Reference Implementations
+
+- **TypeScript/Node.js**: `@mandatez/sdk` — [github.com/mandatez/core](https://github.com/mandatez/core)
+
+---
+
+*This specification is open for public contribution. File issues and pull requests at [github.com/mandatez/core](https://github.com/mandatez/core).*
