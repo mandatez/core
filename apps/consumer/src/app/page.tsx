@@ -5,9 +5,8 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col">
       {/* Hero */}
       <section className="flex-1 flex flex-col justify-center items-center text-center px-6 py-32 md:py-48">
-        <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05]">
-          Every agent needs a{' '}
-          <span className="text-blue-400">mandate</span>.
+        <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05] uppercase">
+          Every agent needs a mandate.
         </h2>
         <p className="mt-6 md:mt-8 text-lg md:text-xl text-gray-400 max-w-xl leading-relaxed">
           Your AI reads your email, moves your money, and deletes your files.
