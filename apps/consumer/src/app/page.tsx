@@ -2,109 +2,91 @@ import Link from 'next/link';
 
 export default function LandingPage() {
   return (
-    <div className="space-y-20 py-8">
+    <div className="min-h-screen flex flex-col">
       {/* Hero */}
-      <section className="text-center space-y-6 max-w-2xl mx-auto">
-        <h2 className="text-4xl font-bold tracking-tight">
-          Control what your AI<br />
-          <span className="text-blue-400">can and can't access</span>
+      <section className="flex-1 flex flex-col justify-center items-center text-center px-6 py-32 md:py-48">
+        <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.05]">
+          Every agent needs a{' '}
+          <span className="text-blue-400">mandate</span>.
         </h2>
-        <p className="text-lg text-gray-400 leading-relaxed">
-          Your AI assistant reads your emails, manages your calendar, and connects
-          to your bank. MandateZ shows you exactly what it did, and lets you set
-          the rules for what it's allowed to do.
+        <p className="mt-6 md:mt-8 text-lg md:text-xl text-gray-400 max-w-xl leading-relaxed">
+          Your AI reads your email, moves your money, and deletes your files.
+          You should know when it does.
         </p>
-        <div className="flex gap-4 justify-center pt-2">
+        <div className="mt-10 flex flex-col sm:flex-row gap-4">
           <Link
             href="/activity"
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+            className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium tracking-wide uppercase rounded transition-colors"
           >
-            View Activity
+            See what it did
           </Link>
           <Link
             href="/rules"
-            className="px-6 py-3 border border-gray-700 hover:border-gray-500 text-gray-200 rounded-lg font-medium transition-colors"
+            className="px-8 py-4 border border-gray-700 hover:border-gray-400 text-gray-300 hover:text-white text-sm font-medium tracking-wide uppercase rounded transition-colors"
           >
-            Set Rules
+            Set your rules
           </Link>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="max-w-3xl mx-auto">
-        <h3 className="text-center text-sm font-semibold text-gray-500 uppercase tracking-wider mb-8">
-          How it works
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FeatureCard
-            icon="🔍"
-            title="See everything"
-            description="Every action your AI takes is logged with a tamper-proof signature. Read an email, booked a flight, sent a payment — you'll know."
-          />
-          <FeatureCard
-            icon="🛡️"
-            title="Set boundaries"
-            description="Block your AI from accessing your bank. Flag any export of personal data. You decide what's off limits."
-          />
-          <FeatureCard
-            icon="✅"
-            title="Approve the big stuff"
-            description="For sensitive actions like payments or data exports, MandateZ pauses and asks you first. No surprises."
-          />
+      {/* The line */}
+      <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-700 to-transparent mx-auto" />
+
+      {/* What it does — three statements */}
+      <section className="px-6 py-24 md:py-32 max-w-4xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-12">
+          <div>
+            <h3 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              See everything.
+            </h3>
+            <p className="mt-4 text-gray-500 leading-relaxed">
+              Every action is signed with a cryptographic key unique to that agent.
+              Tamper-proof. Immutable. Yours.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              Block anything.
+            </h3>
+            <p className="mt-4 text-gray-500 leading-relaxed">
+              Write the rules once. Your agents follow them every time.
+              No access to your bank. No exporting your data. No exceptions.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-2xl md:text-3xl font-semibold tracking-tight">
+              Approve first.
+            </h3>
+            <p className="mt-4 text-gray-500 leading-relaxed">
+              Sensitive actions pause and wait for you.
+              Payments, exports, deletions — nothing moves until you say so.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* What gets tracked */}
-      <section className="max-w-2xl mx-auto text-center space-y-6">
-        <h3 className="text-xl font-semibold">What gets tracked</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {[
-            ['📖', 'Reads', 'Emails, documents, files'],
-            ['✏️', 'Writes', 'Messages, calendar events'],
-            ['📤', 'Exports', 'Data leaving your accounts'],
-            ['🗑️', 'Deletes', 'Anything permanently removed'],
-            ['📡', 'API Calls', 'Services your AI connects to'],
-            ['💳', 'Payments', 'Any financial transaction'],
-          ].map(([icon, title, desc]) => (
-            <div key={title} className="border border-gray-800 rounded-lg p-4 text-left">
-              <div className="text-lg mb-1">{icon}</div>
-              <div className="text-sm font-medium text-gray-200">{title}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{desc}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* The line */}
+      <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-700 to-transparent mx-auto" />
 
-      {/* CTA */}
-      <section className="text-center space-y-4 pb-8">
-        <p className="text-gray-400">
-          Free for up to 3 agents. <span className="text-gray-300">$9.99/mo</span> for unlimited.
+      {/* The question */}
+      <section className="px-6 py-24 md:py-32 text-center">
+        <p className="text-2xl md:text-4xl font-semibold tracking-tight max-w-2xl mx-auto leading-snug">
+          Your AI is already acting on your behalf.<br />
+          <span className="text-gray-500">Do you know what it did today?</span>
         </p>
         <Link
           href="/activity"
-          className="inline-block px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+          className="inline-block mt-10 px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium tracking-wide uppercase rounded transition-colors"
         >
-          Get Started
+          Find out now
         </Link>
+        <p className="mt-8 text-sm text-gray-600">
+          Free for up to 3 agents. $9.99/mo for unlimited.
+        </p>
       </section>
-    </div>
-  );
-}
 
-function FeatureCard({
-  icon,
-  title,
-  description,
-}: {
-  icon: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="border border-gray-800 rounded-lg p-5 space-y-2">
-      <div className="text-2xl">{icon}</div>
-      <h4 className="font-medium text-gray-100">{title}</h4>
-      <p className="text-sm text-gray-400 leading-relaxed">{description}</p>
+      {/* Footer breathing room */}
+      <div className="h-16" />
     </div>
   );
 }
