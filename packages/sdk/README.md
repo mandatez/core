@@ -77,8 +77,8 @@ Every surface — SDK, dashboard, compliance engine, directory — reads the sam
 
 ## Documentation
 
-- [Quickstart](https://docs.mandatez.com/quickstart)
-- [SDK Reference](https://docs.mandatez.com/sdk/track)
+- [Quickstart](https://mandatez.mintlify.app/quickstart)
+- [SDK Reference](https://mandatez.mintlify.app/sdk/track)
 - [Protocol Specification](./protocol/SPEC.md)
 
 ## Project Structure
