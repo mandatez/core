@@ -1,14 +1,21 @@
 import { createSignedEvent } from './events/signing.js';
 import { SupabaseTransport } from './transport/supabase.js';
+import { PolicyEngine } from './policy/index.js';
+import { OversightGate } from './oversight/index.js';
 import type { AgentEvent, AgentEventInput } from './events/schema.js';
+import type { Policy } from './policy/index.js';
+import type { OversightConfig } from './oversight/index.js';
 
 /** The action fields a developer passes to track() */
 export interface TrackInput {
   action_type: AgentEventInput['action_type'];
   resource: string;
-  outcome: AgentEventInput['outcome'];
+  outcome?: AgentEventInput['outcome'];
   policy_id?: string | null;
   metadata?: Record<string, unknown>;
+  /** Optional callback for human approval. If oversight requires approval
+   *  and this is not provided, timeout_action applies immediately. */
+  waitForApproval?: () => Promise<boolean>;
 }
 
 export interface MandateZClientConfig {
@@ -17,19 +24,25 @@ export interface MandateZClientConfig {
   privateKey: string;
   supabaseUrl: string;
   supabaseAnonKey: string;
+  /** Optional policies — if provided, track() evaluates them to determine outcome */
+  policies?: Policy[];
+  /** Optional oversight config — if provided, flagged actions pause for human approval */
+  oversight?: OversightConfig;
 }
 
 /**
  * Main SDK surface for developers.
  *
- * Wires together identity, signing, and transport so a developer
- * can track agent actions with a single method call.
+ * Wires together identity, signing, policy, oversight, and transport
+ * so a developer can track agent actions with a single method call.
  */
 export class MandateZClient {
   private agentId: string;
   private ownerId: string;
   private privateKey: string;
   private transport: SupabaseTransport;
+  private policyEngine: PolicyEngine;
+  private oversightGate: OversightGate | null;
 
   constructor(config: MandateZClientConfig) {
     this.agentId = config.agentId;
@@ -39,21 +52,71 @@ export class MandateZClient {
       supabaseUrl: config.supabaseUrl,
       supabaseAnonKey: config.supabaseAnonKey,
     });
+
+    this.policyEngine = new PolicyEngine();
+    if (config.policies) {
+      for (const policy of config.policies) {
+        this.policyEngine.addPolicy(policy);
+      }
+    }
+
+    this.oversightGate = config.oversight
+      ? new OversightGate(config.oversight)
+      : null;
   }
 
   /**
-   * Track an agent action: sign it, emit it to Supabase, return the event.
+   * Track an agent action.
    *
-   * This is the one method most integrations need.
+   * Flow:
+   * 1. Evaluate policy engine → determines outcome (allowed/blocked/flagged)
+   * 2. If blocked → sign event with 'blocked' outcome, emit, return (action does not proceed)
+   * 3. If oversight gate is configured and action requires approval:
+   *    - Fire alerts, wait for human decision or timeout
+   *    - Override outcome based on approval result
+   * 4. Sign event, emit to Supabase, return
    */
   async track(input: TrackInput): Promise<AgentEvent> {
+    // Step 1: Policy evaluation
+    const policyResult = this.policyEngine.evaluate(input.action_type, input.resource);
+    let outcome = input.outcome ?? policyResult.outcome;
+    let policyId = input.policy_id ?? policyResult.policy_id;
+
+    // Step 2: If policy says blocked, log it and stop
+    if (policyResult.outcome === 'blocked' && !input.outcome) {
+      outcome = 'blocked';
+      policyId = policyResult.policy_id;
+    }
+
+    // Step 3: Oversight gate — check if human approval is needed
+    if (
+      outcome !== 'blocked' &&
+      this.oversightGate &&
+      this.oversightGate.requiresApproval(input.action_type)
+    ) {
+      const oversightResult = await this.oversightGate.requestApproval(
+        {
+          agent_id: this.agentId,
+          action_type: input.action_type,
+          resource: input.resource,
+          metadata: input.metadata ?? {},
+          timestamp: new Date().toISOString(),
+          requires_approval: true,
+        },
+        input.waitForApproval,
+      );
+
+      outcome = oversightResult.outcome;
+    }
+
+    // Step 4: Sign and emit
     const eventInput: AgentEventInput = {
       agent_id: this.agentId,
       owner_id: this.ownerId,
       action_type: input.action_type,
       resource: input.resource,
-      outcome: input.outcome,
-      policy_id: input.policy_id ?? null,
+      outcome,
+      policy_id: policyId ?? null,
       metadata: input.metadata ?? {},
     };
 
