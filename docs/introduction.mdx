@@ -1,0 +1,56 @@
+---
+title: Introduction
+description: What is MandateZ and why does it exist
+---
+
+# What is MandateZ?
+
+MandateZ is the neutral, cross-vendor trust infrastructure layer for AI agents.
+
+Every AI agent needs a mandate — a cryptographically signed authorization that defines
+its identity, what it is permitted to do, and a tamper-proof log of everything it has done.
+
+## The Problem
+
+AI agents are autonomous. They read emails, write to databases, call APIs, and make
+payments — often without human oversight. Companies deploying agents have no
+standardized way to:
+
+- **Prove** which agent did what
+- **Enforce** what agents are and are not allowed to do
+- **Produce** compliance audit trails on demand
+- **Trust** agents from other companies
+
+## How MandateZ Solves It
+
+Every agent action flows through a single spine: the **Agent Event Stream**.
+
+```
+Agent Action → Policy Check → Oversight Gate → Sign Event → Emit to Stream
+```
+
+Each event is:
+
+- **Identified** — every agent has a unique ID and Ed25519 keypair
+- **Signed** — every action produces a cryptographically signed event
+- **Enforced** — policy rules allow, block, or flag actions before they execute
+- **Auditable** — the event stream is your compliance audit trail
+
+## Works With Everything
+
+MandateZ is vendor-neutral by design. It works with:
+
+- **LangChain** — callback handler for LLM and tool tracking
+- **n8n** — workflow execution hooks
+- **AutoGen** — coming soon
+- **CrewAI** — coming soon
+- **Any agent framework** — the SDK wraps any async action
+
+No single platform (OpenAI, Anthropic, AWS) can be this layer without a conflict
+of interest. MandateZ is neutral infrastructure.
+
+## Open Protocol
+
+The [MandateZ Protocol Specification](/protocol) defines the wire format, signing
+algorithm, policy semantics, and transport contract as an open standard. Any developer
+can build a conforming implementation in any language.

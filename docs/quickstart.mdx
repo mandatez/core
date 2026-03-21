@@ -1,0 +1,102 @@
+---
+title: Quickstart
+description: Get MandateZ running in under 5 minutes
+---
+
+# Quickstart
+
+## Install
+
+```bash
+npm install @mandatez/sdk
+```
+
+## 1. Generate an Agent Identity
+
+Every agent gets a unique ID and Ed25519 keypair:
+
+```typescript
+import { generateAgentIdentity } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+// { agent_id: 'ag_V1StGXR8_Z5jdHi6B-myT',
+//   public_key: 'base64...',
+//   private_key: 'base64...' }
+```
+
+## 2. Create a Client
+
+The client wires together signing, policy, and transport:
+
+```typescript
+import { MandateZClient } from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  agentId: identity.agent_id,
+  ownerId: 'your_org_id',
+  privateKey: identity.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+});
+```
+
+## 3. Track an Action
+
+One method call — signed, validated, and emitted:
+
+```typescript
+const event = await client.track({
+  action_type: 'read',
+  resource: 'emails',
+});
+
+console.log(event.event_id);  // UUID
+console.log(event.outcome);   // 'allowed'
+console.log(event.signature); // Ed25519 signature
+```
+
+## 4. Add a Policy (Optional)
+
+Block or flag actions before they execute:
+
+```typescript
+const client = new MandateZClient({
+  agentId: identity.agent_id,
+  ownerId: 'your_org_id',
+  privateKey: identity.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  policies: [{
+    id: 'pol_prod',
+    owner_id: 'your_org_id',
+    name: 'Production',
+    rules: [
+      { id: 'r1', action_types: ['export', 'delete'], resource_pattern: '*', effect: 'block' },
+      { id: 'r2', action_types: ['payment'], resource_pattern: 'api/*', effect: 'flag' },
+    ],
+  }],
+});
+
+const blocked = await client.track({
+  action_type: 'export',
+  resource: 'customer_data',
+});
+console.log(blocked.outcome); // 'blocked'
+```
+
+## 5. Verify an Event
+
+Anyone with the public key can verify the signature:
+
+```typescript
+import { verifyEvent } from '@mandatez/sdk';
+
+const valid = await verifyEvent(event);
+console.log(valid); // true
+```
+
+## Next Steps
+
+- [track() API Reference](/sdk/track) — full options and examples
+- [Protocol Specification](/protocol) — the open standard
+- [Dashboard](/dashboard) — live event monitoring

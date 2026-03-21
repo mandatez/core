@@ -22,3 +22,4 @@ export { MandateZClient } from './client.js';
 export type { MandateZClientConfig, TrackInput } from './client.js';
 
 export { MandateZN8nHook } from './integrations/n8n/index.js';
+export { MandateZLangChainCallback } from './integrations/langchain/index.js';

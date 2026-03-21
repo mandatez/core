@@ -1,0 +1,111 @@
+---
+title: track()
+description: API reference for MandateZClient.track()
+---
+
+# MandateZClient.track()
+
+The primary method for logging agent actions. Signs the event cryptographically,
+evaluates policies, runs the oversight gate, and emits to Supabase.
+
+## Signature
+
+```typescript
+async track(input: TrackInput): Promise<AgentEvent>
+```
+
+## TrackInput
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action_type` | `'read' \| 'write' \| 'export' \| 'delete' \| 'call' \| 'payment'` | Yes | What kind of action the agent performed |
+| `resource` | `string` | Yes | What was accessed (e.g., `'emails'`, `'api/stripe'`) |
+| `outcome` | `'allowed' \| 'blocked' \| 'flagged' \| 'pending_approval'` | No | Explicit override. If omitted, determined by policy engine. |
+| `policy_id` | `string \| null` | No | Explicit policy ID. If omitted, set by policy engine. |
+| `metadata` | `Record<string, unknown>` | No | Arbitrary context. Defaults to `{}`. |
+| `waitForApproval` | `() => Promise<boolean>` | No | Callback for human oversight. See below. |
+
+## Execution Flow
+
+```
+1. Policy engine evaluates (action_type, resource) → outcome
+2. If blocked by policy → sign and emit with 'blocked', skip oversight
+3. If oversight gate configured and action requires approval:
+   → fire alerts → wait for human or timeout → set outcome
+4. Sign event with Ed25519
+5. Emit to Supabase
+6. Return complete AgentEvent
+```
+
+## Examples
+
+### Basic tracking
+
+```typescript
+const event = await client.track({
+  action_type: 'read',
+  resource: 'emails',
+});
+```
+
+### With metadata
+
+```typescript
+const event = await client.track({
+  action_type: 'write',
+  resource: 'database',
+  metadata: { table: 'users', operation: 'INSERT', row_count: 5 },
+});
+```
+
+### With human oversight
+
+```typescript
+const event = await client.track({
+  action_type: 'payment',
+  resource: 'api/stripe',
+  metadata: { amount: 500, currency: 'usd' },
+  waitForApproval: async () => {
+    // Your approval logic — webhook, CLI prompt, Slack button, etc.
+    const approved = await waitForSlackApproval();
+    return approved;
+  },
+});
+```
+
+### Explicit outcome override
+
+```typescript
+// Bypass policy engine — useful for integrations that manage their own outcomes
+const event = await client.track({
+  action_type: 'call',
+  resource: 'n8n/workflow:wf_123/node:HTTP',
+  outcome: 'pending_approval',
+});
+```
+
+## Return Value
+
+Returns a complete `AgentEvent` with all fields populated:
+
+```typescript
+interface AgentEvent {
+  event_id: string;       // UUID v4
+  agent_id: string;       // ag_ + nanoid
+  owner_id: string;
+  timestamp: string;      // ISO 8601
+  action_type: string;
+  resource: string;
+  outcome: string;
+  policy_id: string | null;
+  metadata: Record<string, unknown>;
+  signature: string;      // Ed25519 base64
+  public_key: string;     // Ed25519 base64
+}
+```
+
+## Error Handling
+
+- Throws if the Supabase insert fails
+- Throws if the private key is invalid or cannot sign
+- Policy and oversight errors are reflected in the `outcome` field, not thrown
