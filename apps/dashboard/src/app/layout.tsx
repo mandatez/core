@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-950 text-gray-100 min-h-screen">
+      <body className="text-gray-100 min-h-screen">
         <nav className="border-b border-gray-800 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tight">
