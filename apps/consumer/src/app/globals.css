@@ -3,3 +3,65 @@
 body {
   background-color: #0a0a0a;
 }
+
+/* Terminal feed — per-line staggered appear/disappear cycle */
+.terminal-line { opacity: 0; }
+
+.terminal-line-0 { animation: t0 20s ease-out infinite; }
+.terminal-line-1 { animation: t1 20s ease-out infinite; }
+.terminal-line-2 { animation: t2 20s ease-out infinite; }
+.terminal-line-3 { animation: t3 20s ease-out infinite; }
+.terminal-line-4 { animation: t4 20s ease-out infinite; }
+.terminal-line-5 { animation: t5 20s ease-out infinite; }
+.terminal-line-6 { animation: t6 20s ease-out infinite; }
+.terminal-line-7 { animation: t7 20s ease-out infinite; }
+
+@keyframes t0 {
+  0%      { opacity: 0; transform: translateY(6px); }
+  3%, 80% { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+@keyframes t1 {
+  0%, 10%   { opacity: 0; transform: translateY(6px); }
+  13%, 80%  { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+@keyframes t2 {
+  0%, 20%   { opacity: 0; transform: translateY(6px); }
+  23%, 80%  { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+@keyframes t3 {
+  0%, 30%   { opacity: 0; transform: translateY(6px); }
+  33%, 80%  { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+@keyframes t4 {
+  0%, 40%   { opacity: 0; transform: translateY(6px); }
+  43%, 80%  { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+@keyframes t5 {
+  0%, 50%   { opacity: 0; transform: translateY(6px); }
+  53%, 80%  { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+@keyframes t6 {
+  0%, 60%   { opacity: 0; transform: translateY(6px); }
+  63%, 80%  { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+@keyframes t7 {
+  0%, 70%   { opacity: 0; transform: translateY(6px); }
+  73%, 80%  { opacity: 1; transform: translateY(0); }
+  88%, 100% { opacity: 0; }
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.terminal-cursor {
+  animation: blink 1s step-end infinite;
+}
