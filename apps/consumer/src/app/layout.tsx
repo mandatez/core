@@ -36,6 +36,9 @@ export default function RootLayout({
               <Link href="/rules" className="hover:text-gray-200 transition-colors">
                 Rules
               </Link>
+              <Link href="/pricing" className="hover:text-gray-200 transition-colors">
+                Pricing
+              </Link>
             </div>
           </div>
         </nav>
