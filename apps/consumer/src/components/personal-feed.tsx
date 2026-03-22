@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
+import type { User } from '@supabase/supabase-js';
 
 interface AgentEvent {
   id: string;
@@ -35,14 +36,23 @@ export function PersonalFeed() {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     const supabase = getSupabaseBrowser();
 
-    async function fetchEvents() {
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      setUser(user);
+
       const { data, error } = await supabase
         .from('agent_events')
         .select('id, agent_id, owner_id, timestamp, action_type, resource, outcome, policy_id, metadata')
+        .eq('owner_id', user.id)
         .order('timestamp', { ascending: false })
         .limit(50);
 
@@ -50,31 +60,40 @@ export function PersonalFeed() {
         setEvents(data as AgentEvent[]);
       }
       setLoading(false);
+
+      const channel = supabase
+        .channel('consumer_events')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'agent_events',
+            filter: `owner_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newEvent = payload.new as AgentEvent;
+            setEvents((prev) => [newEvent, ...prev].slice(0, 100));
+          },
+        )
+        .subscribe((status) => {
+          setConnected(status === 'SUBSCRIBED');
+        });
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
 
-    fetchEvents();
-
-    const channel = supabase
-      .channel('consumer_events')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'agent_events' },
-        (payload) => {
-          const newEvent = payload.new as AgentEvent;
-          setEvents((prev) => [newEvent, ...prev].slice(0, 100));
-        },
-      )
-      .subscribe((status) => {
-        setConnected(status === 'SUBSCRIBED');
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    init();
   }, []);
 
   if (loading) {
     return <div className="text-gray-500 text-center py-12">Loading your activity...</div>;
+  }
+
+  if (!user) {
+    return <div className="text-gray-500 text-center py-12">Not signed in.</div>;
   }
 
   return (

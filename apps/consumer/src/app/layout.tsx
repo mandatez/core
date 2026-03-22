@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import Link from 'next/link';
+import { AuthNav } from '@/components/auth-nav';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -39,6 +40,9 @@ export default function RootLayout({
               <Link href="/pricing" className="hover:text-gray-200 transition-colors">
                 Pricing
               </Link>
+            </div>
+            <div className="ml-auto">
+              <AuthNav />
             </div>
           </div>
         </nav>
