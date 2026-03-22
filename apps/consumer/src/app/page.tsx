@@ -25,9 +25,9 @@ export default function LandingPage() {
   return (
     <div>
       {/* Hero — full viewport, left-anchored */}
-      <section className="min-h-screen grid grid-cols-1 lg:grid-cols-2 px-6 md:px-12 lg:px-16 xl:px-24">
-        <div className="flex flex-col justify-end pb-24">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] uppercase">
+      <section className="min-h-screen grid grid-cols-1 lg:grid-cols-2 pl-8 md:pl-16 lg:pl-24 pr-8 md:pr-16 lg:pr-24">
+        <div className="flex flex-col justify-end pb-16 lg:pb-24">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-[1.08] uppercase">
             Every agent
             <br />
             needs a mandate.
@@ -53,7 +53,7 @@ export default function LandingPage() {
         </div>
 
         {/* Terminal — floating against darkness */}
-        <div className="hidden lg:flex items-end pb-24 pl-12">
+        <div className="hidden lg:flex items-end pb-24">
           <div className="w-full max-w-md ml-auto relative" style={{ height: '22rem' }}>
             <div className="space-y-3 font-mono text-[13px]">
               {EVENTS.map((e, i) => (
@@ -81,10 +81,10 @@ export default function LandingPage() {
       </section>
 
       {/* Divider */}
-      <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-700 to-transparent mx-auto lg:ml-16 xl:ml-24" />
+      <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-700 to-transparent mx-auto lg:ml-24" />
 
       {/* Three statements — full width, left border accent */}
-      <section className="px-6 md:px-12 lg:px-16 xl:px-24 py-24 md:py-32 space-y-16 md:space-y-20">
+      <section className="pl-8 md:pl-16 lg:pl-24 pr-8 md:pr-16 lg:pr-24 py-24 md:py-32 space-y-16 md:space-y-20">
         <div className="border-l-2 border-blue-500 pl-8 max-w-3xl">
           <h3 className="text-3xl md:text-4xl font-semibold tracking-tight">
             See everything.
@@ -115,10 +115,10 @@ export default function LandingPage() {
       </section>
 
       {/* Divider */}
-      <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-700 to-transparent mx-auto lg:ml-16 xl:ml-24" />
+      <div className="w-px h-24 bg-gradient-to-b from-transparent via-gray-700 to-transparent mx-auto lg:ml-24" />
 
       {/* Close */}
-      <section className="px-6 md:px-12 lg:px-16 xl:px-24 py-24 md:py-32">
+      <section className="pl-8 md:pl-16 lg:pl-24 pr-8 md:pr-16 lg:pr-24 py-24 md:py-32">
         <p className="text-3xl md:text-4xl font-semibold tracking-tight leading-snug max-w-2xl">
           Your AI is already acting on your behalf.
           <br />

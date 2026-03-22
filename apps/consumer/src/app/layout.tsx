@@ -15,9 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="text-gray-100 min-h-screen">
-        <nav className="border-b border-gray-800 px-6 py-4">
-          <div className="max-w-3xl mx-auto flex items-center gap-8">
-            <Link href="/" className="text-xl font-bold tracking-tight">
+        <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-800/50 backdrop-blur-sm px-8 md:px-16 lg:px-24 py-4">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="text-xl font-black tracking-tight">
               Mandate<span className="text-blue-400">Z</span>
             </Link>
             <div className="flex gap-6 text-sm text-gray-400">
@@ -33,7 +33,7 @@ export default function RootLayout({
             </div>
           </div>
         </nav>
-        <main className="max-w-3xl mx-auto px-6 py-8">
+        <main>
           {children}
         </main>
       </body>
