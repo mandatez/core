@@ -26,8 +26,8 @@ export default function LandingPage() {
     <div>
       {/* Hero — full viewport, left-anchored */}
       <section className="min-h-screen grid grid-cols-1 lg:grid-cols-2 px-6 md:px-12 lg:px-16 xl:px-24">
-        <div className="flex flex-col justify-end pb-16 lg:pb-24 pt-32">
-          <h2 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight leading-[1.05] uppercase">
+        <div className="flex flex-col justify-end pb-24">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] uppercase">
             Every agent
             <br />
             needs a mandate.
