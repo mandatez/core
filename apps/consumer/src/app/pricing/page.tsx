@@ -5,10 +5,10 @@ const TIERS = [
     name: 'Free',
     price: '$0',
     period: '/mo',
-    description: 'For individuals getting started with AI oversight.',
+    description: 'Everything you need to see what your AI is doing.',
     features: [
-      'Up to 3 agents',
-      'Event logging',
+      'Unlimited agents',
+      'Full event logging',
       'Basic dashboard',
       'Community support',
     ],
@@ -20,36 +20,18 @@ const TIERS = [
     name: 'Pro',
     price: '$9.99',
     period: '/mo',
-    description: 'Full control over every agent you run.',
+    description: 'Full control, full enforcement, full visibility.',
     features: [
-      'Unlimited agents',
-      'Real-time event feed',
+      'Everything in Free',
+      'Compliance exports',
       'Policy engine',
       'Human oversight gate',
       'Slack + webhook alerts',
-      'Compliance report export',
       'Email support',
     ],
     cta: 'Upgrade to Pro',
     href: '/activity',
     highlighted: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    period: '',
-    description: 'For teams that need guarantees.',
-    features: [
-      'Everything in Pro',
-      'SSO + audit logs',
-      'White-label SDK',
-      'SLA guarantee',
-      'Dedicated support',
-      'On-premise option',
-    ],
-    cta: 'Contact us',
-    href: 'mailto:hello@mandatez.com',
-    highlighted: false,
   },
 ];
 
@@ -65,7 +47,7 @@ export default function PricingPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
         {TIERS.map((tier) => (
           <div
             key={tier.name}
@@ -88,9 +70,7 @@ export default function PricingPage() {
               <span className="text-4xl font-black tracking-tight text-gray-100">
                 {tier.price}
               </span>
-              {tier.period && (
-                <span className="text-gray-500 text-sm">{tier.period}</span>
-              )}
+              <span className="text-gray-500 text-sm">{tier.period}</span>
             </div>
             <p className="mt-3 text-sm text-gray-500">
               {tier.description}
@@ -118,6 +98,13 @@ export default function PricingPage() {
           </div>
         ))}
       </div>
+
+      <p className="mt-12 text-sm text-gray-500">
+        Need enterprise compliance or white-label?{' '}
+        <Link href="/enterprise" className="text-blue-400 hover:text-blue-300 transition-colors">
+          See enterprise plans &rarr;
+        </Link>
+      </p>
     </div>
   );
 }
