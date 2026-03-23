@@ -51,7 +51,7 @@ export default function RootLayout({
                   </SignInButton>
                 </Show>
                 <Show when="signed-in">
-                  <UserButton />
+                  <UserButton userProfileUrl="/account" userProfileMode="navigation" />
                 </Show>
               </div>
             </div>
