@@ -37,7 +37,7 @@ const TIERS = [
 
 export default function PricingPage() {
   return (
-    <div className="py-16 md:py-24">
+    <div className="py-16 md:py-24 pt-24 pl-8 md:pl-16 lg:pl-24 pr-8 md:pr-16 lg:pr-24">
       <div className="mb-16">
         <h2 className="text-3xl md:text-4xl font-black tracking-tight uppercase">
           Pricing
