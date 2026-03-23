@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
-import type { User } from '@supabase/supabase-js';
 
 interface AgentEvent {
   id: string;
@@ -33,26 +33,25 @@ const ACTION_LABELS: Record<string, { icon: string; verb: string }> = {
 };
 
 export function PersonalFeed() {
+  const { user, isLoaded } = useUser();
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    if (!isLoaded || !user) {
+      if (isLoaded) setLoading(false);
+      return;
+    }
+
     const supabase = getSupabaseBrowser();
+    const userId = user.id;
 
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      setUser(user);
-
+    async function fetchEvents() {
       const { data, error } = await supabase
         .from('agent_events')
         .select('id, agent_id, owner_id, timestamp, action_type, resource, outcome, policy_id, metadata')
-        .eq('owner_id', user.id)
+        .eq('owner_id', userId)
         .order('timestamp', { ascending: false })
         .limit(50);
 
@@ -60,35 +59,35 @@ export function PersonalFeed() {
         setEvents(data as AgentEvent[]);
       }
       setLoading(false);
-
-      const channel = supabase
-        .channel('consumer_events')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'agent_events',
-            filter: `owner_id=eq.${user.id}`,
-          },
-          (payload) => {
-            const newEvent = payload.new as AgentEvent;
-            setEvents((prev) => [newEvent, ...prev].slice(0, 100));
-          },
-        )
-        .subscribe((status) => {
-          setConnected(status === 'SUBSCRIBED');
-        });
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
 
-    init();
-  }, []);
+    fetchEvents();
 
-  if (loading) {
+    const channel = supabase
+      .channel('consumer_events')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'agent_events',
+          filter: `owner_id=eq.${userId}`,
+        },
+        (payload) => {
+          const newEvent = payload.new as AgentEvent;
+          setEvents((prev) => [newEvent, ...prev].slice(0, 100));
+        },
+      )
+      .subscribe((status) => {
+        setConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, isLoaded]);
+
+  if (loading || !isLoaded) {
     return <div className="text-gray-500 text-center py-12">Loading your activity...</div>;
   }
 
