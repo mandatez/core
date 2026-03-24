@@ -42,7 +42,12 @@ export default function RootLayout({
                   Pricing
                 </Link>
               </div>
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-6">
+                <Show when="signed-in">
+                  <Link href="/account" className="text-sm text-gray-400 hover:text-gray-200 transition-colors">
+                    Account
+                  </Link>
+                </Show>
                 <Show when="signed-out">
                   <SignInButton>
                     <button className="text-sm text-gray-400 hover:text-gray-200 transition-colors">
