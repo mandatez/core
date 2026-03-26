@@ -32,8 +32,26 @@ export default async function DirectoryPage() {
           Failed to load agents: {error.message}
         </div>
       ) : !agents || agents.length === 0 ? (
-        <div className="text-gray-500 text-center py-12 border border-gray-800 rounded-lg">
-          No agents registered yet. Use the API to register your first agent.
+        <div className="flex flex-col items-center justify-center py-24 border border-gray-800 rounded-lg">
+          <div className="w-16 h-16 rounded-full bg-blue-900/30 flex items-center justify-center mb-6">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-blue-400">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-100">No agents listed yet</h3>
+          <p className="text-gray-500 mt-2 mb-8">Be the first to register a MandateZ-verified agent.</p>
+          <a
+            href="https://mandatez.mintlify.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
+          >
+            Register Your Agent
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 17l9.2-9.2M17 17V7H7"/>
+            </svg>
+          </a>
         </div>
       ) : (
         <div className="grid gap-4">
