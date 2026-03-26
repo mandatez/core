@@ -1,0 +1,51 @@
+{
+  "name": "n8n-nodes-mandatez",
+  "version": "0.1.2",
+  "description": "n8n community node for MandateZ — cryptographic audit trail and policy enforcement for AI agents",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "ai",
+    "agents",
+    "audit",
+    "compliance",
+    "mandatez"
+  ],
+  "author": {
+    "name": "MandateZ",
+    "email": "okekemunachimsodavid@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://mandatez.mintlify.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mandatez/core"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && cp src/nodes/MandateZ/mandatez.svg dist/nodes/MandateZ/mandatez.svg",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "nodes": [
+      "dist/nodes/MandateZ/MandateZ.node.js"
+    ],
+    "credentials": [
+      "dist/credentials/MandateZApi.credentials.js"
+    ]
+  },
+  "peerDependencies": {
+    "n8n-workflow": ">=1.0.0"
+  },
+  "devDependencies": {
+    "n8n-workflow": "^1.78.0"
+  }
+}
