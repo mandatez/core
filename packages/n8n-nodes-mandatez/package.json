@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-mandatez",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "n8n community node for MandateZ — cryptographic audit trail and policy enforcement for AI agents",
   "keywords": [
     "n8n-community-node-package",
@@ -19,7 +19,8 @@
   "homepage": "https://mandatez.mintlify.app",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mandatez/core"
+    "url": "https://github.com/mandatez/core.git",
+    "directory": "packages/n8n-nodes-mandatez"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
