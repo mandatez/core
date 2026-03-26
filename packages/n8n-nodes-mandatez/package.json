@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-mandatez",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "n8n community node for MandateZ — cryptographic audit trail and policy enforcement for AI agents",
   "keywords": [
     "n8n-community-node-package",
@@ -24,7 +24,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc && cp src/nodes/MandateZ/mandatez.svg dist/nodes/MandateZ/mandatez.svg",
+    "build": "tsc && cp nodes/MandateZ/mandatez.svg dist/nodes/MandateZ/mandatez.svg",
     "dev": "tsc --watch",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build"
