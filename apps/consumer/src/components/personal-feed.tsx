@@ -103,8 +103,62 @@ export function PersonalFeed() {
       </div>
 
       {events.length === 0 ? (
-        <div className="text-gray-500 text-center py-12 border border-gray-800 rounded-lg">
-          No activity yet. Once your AI assistants start working, their actions will appear here.
+        <div className="border border-gray-800 rounded-lg py-16 px-6">
+          <div className="max-w-lg mx-auto">
+            <h3 className="text-xl font-semibold text-gray-100 text-center">No agents connected yet</h3>
+            <p className="text-gray-500 text-center mt-2 mb-10">Get started in three steps.</p>
+
+            <div className="space-y-6">
+              <div className="flex gap-4">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-blue-900/40 text-blue-400 text-xs font-bold flex items-center justify-center">1</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-200">Install the SDK</p>
+                  <pre className="mt-1.5 text-xs text-gray-400 bg-gray-900 rounded px-3 py-2 overflow-x-auto font-mono">npm install @mandatez/sdk</pre>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-blue-900/40 text-blue-400 text-xs font-bold flex items-center justify-center">2</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-200">Register your agent</p>
+                  <pre className="mt-1.5 text-xs text-gray-400 bg-gray-900 rounded px-3 py-2 overflow-x-auto font-mono whitespace-pre">{`import { MandateZClient, generateAgentIdentity } from '@mandatez/sdk';
+
+const agent = await generateAgentIdentity();
+const client = new MandateZClient({
+  agentId:        agent.agent_id,
+  ownerId:        '${user?.id ?? 'your_owner_id'}',
+  privateKey:     agent.private_key,
+  supabaseUrl:    '<your-supabase-url>',
+  supabaseAnonKey:'<your-supabase-anon-key>',
+});
+
+await client.track({ action_type: 'call', resource: 'hello/world' });`}</pre>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <span className="shrink-0 w-7 h-7 rounded-full bg-blue-900/40 text-blue-400 text-xs font-bold flex items-center justify-center">3</span>
+                <div>
+                  <p className="text-sm font-medium text-gray-200">Watch events appear here in real time</p>
+                  <p className="mt-1 text-xs text-gray-500">Once your agent calls <code className="text-gray-400">client.track()</code>, events stream into this feed automatically.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-10 text-center">
+              <a
+                href="https://mandatez.mintlify.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
+              >
+                Read the docs
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 17l9.2-9.2M17 17V7H7"/>
+                </svg>
+              </a>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-2">
