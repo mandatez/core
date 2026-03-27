@@ -68,6 +68,9 @@ create policy "agents_insert_own" on agents
 create policy "agents_update_own" on agents
   for update using (owner_id = auth.jwt() ->> 'sub');
 
+create policy "agents_delete_own" on agents
+  for delete using (owner_id = auth.jwt() ->> 'sub');
+
 -- Agent Events: owners can read their own events, service role can insert
 create policy "events_select_own" on agent_events
   for select using (owner_id = auth.jwt() ->> 'sub');
