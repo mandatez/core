@@ -1,0 +1,76 @@
+---
+title: "ASI-03: Identity Abuse"
+description: How MandateZ mitigates OWASP Agentic Security ASI-03 — Identity Abuse
+---
+
+# How MandateZ Fixes ASI-03: Identity Abuse
+
+## What Is the Risk?
+
+Identity Abuse occurs when an AI agent operates without a distinct, verifiable identity. It may share credentials with other agents, inherit a human user's session, or have no identity at all — making it impossible to attribute actions, detect impersonation, or revoke access to a single agent without affecting others.
+
+When you can't tell _which_ agent did _what_, you can't trust any of them.
+
+## How MandateZ Mitigates It
+
+MandateZ gives every agent a unique cryptographic identity from the moment it is created.
+
+### Ed25519 Keypair Per Agent
+
+Each agent gets its own Ed25519 keypair. The private key signs every action; the public key lets anyone verify the signature. No shared tokens, no inherited sessions.
+
+```typescript
+import { generateAgentIdentity } from '@mandatez/sdk';
+
+// Each agent gets a unique, non-shared identity
+const supportBot = await generateAgentIdentity();
+const financeBot = await generateAgentIdentity();
+
+console.log(supportBot.agent_id);   // 'ag_xK9mP2...'
+console.log(financeBot.agent_id);   // 'ag_7Hn3Qw...'
+
+// Different keys — one agent cannot sign as another
+console.log(supportBot.public_key !== financeBot.public_key); // true
+```
+
+### Signed, Non-Repudiable Events
+
+Every action an agent takes is signed with its private key. The signature is stored alongside the event, creating a tamper-proof record that cryptographically binds each action to a specific agent.
+
+```typescript
+import { MandateZClient, verifyEvent } from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  agentId: supportBot.agent_id,
+  ownerId: 'your_org_id',
+  privateKey: supportBot.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+});
+
+const event = await client.track({
+  action_type: 'read',
+  resource: 'tickets/T-4521',
+});
+
+// Verify: this event was definitely created by supportBot
+const valid = await verifyEvent(event);
+console.log(valid);              // true
+console.log(event.signature);   // Ed25519 signature
+console.log(event.public_key);  // supportBot's public key
+console.log(event.agent_id);    // 'ag_xK9mP2...'
+```
+
+### Agent-Level Revocation
+
+Because each agent has its own identity, you can revoke or rotate a single agent's credentials without affecting any other agent in your fleet.
+
+### Cross-Company Verification
+
+When agents from different organizations interact, MandateZ lets each side verify the other agent's identity using the public key from the Agent Directory — no shared secrets, no trust-on-first-use.
+
+---
+
+<Card title="Get Started" icon="rocket" href="/quickstart">
+  Set up MandateZ in under 5 minutes and give every agent a verifiable identity.
+</Card>

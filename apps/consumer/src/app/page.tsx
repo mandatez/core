@@ -36,6 +36,9 @@ export default function LandingPage() {
             Your AI reads your email, moves your money, and deletes your files.
             You should know when it does.
           </p>
+          <p className="mt-3 text-sm font-medium tracking-wide uppercase text-blue-400">
+            OWASP Agentic Top 10 compliant by default
+          </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
             <Link
               href="/activity"

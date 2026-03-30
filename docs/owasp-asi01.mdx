@@ -1,0 +1,81 @@
+---
+title: "ASI-01: Excessive Agency"
+description: How MandateZ mitigates OWASP Agentic Security ASI-01 — Excessive Agency
+---
+
+# How MandateZ Fixes ASI-01: Excessive Agency
+
+## What Is the Risk?
+
+Excessive Agency occurs when an AI agent is given more permissions than it needs to complete its task. The agent can access tools, data, or APIs beyond its intended scope — and a single prompt injection or logic bug can escalate into unauthorized actions across your entire infrastructure.
+
+In short: if your agent _can_ delete the production database, eventually it _will_.
+
+## How MandateZ Mitigates It
+
+MandateZ enforces the principle of least privilege at the infrastructure level, not the prompt level.
+
+### Policy Engine — Allowlist by Default
+
+The MandateZ policy engine lets you define exactly which `action_type` + `resource` combinations an agent is permitted to use. Everything else is blocked before execution.
+
+```typescript
+import { MandateZClient, generateAgentIdentity } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+
+const client = new MandateZClient({
+  agentId: identity.agent_id,
+  ownerId: 'your_org_id',
+  privateKey: identity.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  policies: [{
+    id: 'pol_least_privilege',
+    owner_id: 'your_org_id',
+    name: 'Least Privilege — Support Bot',
+    rules: [
+      // Only allow reading tickets — nothing else
+      { id: 'r1', action_types: ['read'], resource_pattern: 'tickets/*', effect: 'allow' },
+      // Block all destructive actions on every resource
+      { id: 'r2', action_types: ['delete', 'export', 'payment'], resource_pattern: '*', effect: 'block' },
+      // Flag writes for human review
+      { id: 'r3', action_types: ['write'], resource_pattern: '*', effect: 'flag' },
+    ],
+  }],
+});
+
+// Agent tries to delete a customer record — blocked instantly
+const event = await client.track({
+  action_type: 'delete',
+  resource: 'customers/cust_123',
+});
+
+console.log(event.outcome); // 'blocked'
+```
+
+### Human Oversight Gate
+
+Even when an action is _allowed_ by policy, MandateZ can require human approval for sensitive operations. If no human responds within the timeout, the action is auto-blocked.
+
+```typescript
+const client = new MandateZClient({
+  // ...config
+  oversight: {
+    require_human_approval: ['export', 'delete', 'payment'],
+    alert_channel: 'slack',
+    timeout_seconds: 300,
+    timeout_action: 'block',
+  },
+});
+```
+
+### Tamper-Proof Audit Trail
+
+Every action — allowed or blocked — is signed with the agent's Ed25519 key and logged to the event stream. If an agent exceeds its intended scope, you have a cryptographic record of exactly what happened.
+
+---
+
+<Card title="Get Started" icon="rocket" href="/quickstart">
+  Set up MandateZ in under 5 minutes and enforce least-privilege on your agents.
+</Card>

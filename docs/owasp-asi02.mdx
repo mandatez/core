@@ -1,0 +1,83 @@
+---
+title: "ASI-02: Insufficient Authorization"
+description: How MandateZ mitigates OWASP Agentic Security ASI-02 — Insufficient Authorization
+---
+
+# How MandateZ Fixes ASI-02: Insufficient Authorization
+
+## What Is the Risk?
+
+Insufficient Authorization happens when an AI agent can perform actions without proper permission checks. The agent may inherit the user's full session token, bypass role-based access controls, or escalate privileges by chaining tool calls — all without any authorization layer verifying whether that specific agent should be allowed to act.
+
+Most agent frameworks today have zero authorization enforcement at the agent level.
+
+## How MandateZ Mitigates It
+
+MandateZ adds a dedicated authorization layer between the agent and every resource it touches.
+
+### Policy-Based Access Control
+
+Every action an agent attempts is evaluated against its assigned policy _before_ execution. Policies are explicit rules — not prompt instructions an LLM can ignore.
+
+```typescript
+import { MandateZClient, generateAgentIdentity } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+
+const client = new MandateZClient({
+  agentId: identity.agent_id,
+  ownerId: 'your_org_id',
+  privateKey: identity.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  policies: [{
+    id: 'pol_auth',
+    owner_id: 'your_org_id',
+    name: 'Finance Bot Authorization',
+    rules: [
+      // Can read invoices
+      { id: 'r1', action_types: ['read'], resource_pattern: 'invoices/*', effect: 'allow' },
+      // Can call the billing API
+      { id: 'r2', action_types: ['call'], resource_pattern: 'api/billing', effect: 'allow' },
+      // Cannot touch anything else
+      { id: 'r3', action_types: ['read', 'write', 'delete', 'export', 'call', 'payment'], resource_pattern: '*', effect: 'block' },
+    ],
+  }],
+});
+
+// Attempt to read HR records — blocked by policy
+const event = await client.track({
+  action_type: 'read',
+  resource: 'hr/employee_salaries',
+});
+
+console.log(event.outcome);   // 'blocked'
+console.log(event.policy_id); // 'pol_auth'
+```
+
+### Cryptographic Agent Identity
+
+Each agent gets its own Ed25519 keypair. Actions are signed with the agent's private key, making it impossible for one agent to impersonate another or act without a verifiable identity.
+
+```typescript
+import { generateAgentIdentity, verifyEvent } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+// Each agent has a unique keypair — no shared tokens
+console.log(identity.agent_id);   // 'ag_V1StGXR8_Z5jdHi6B-myT'
+console.log(identity.public_key); // Ed25519 public key
+
+// Any event can be verified against the agent's public key
+const valid = await verifyEvent(event);
+console.log(valid); // true — proves this agent authored this action
+```
+
+### Row-Level Security
+
+On the data layer, Supabase RLS ensures each owner only sees their own agents and events. There is no API endpoint that returns cross-tenant data.
+
+---
+
+<Card title="Get Started" icon="rocket" href="/quickstart">
+  Set up MandateZ in under 5 minutes and add real authorization to your agents.
+</Card>

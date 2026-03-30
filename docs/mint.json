@@ -40,6 +40,10 @@
       "pages": ["sdk/track"]
     },
     {
+      "group": "OWASP Compliance",
+      "pages": ["owasp-asi01", "owasp-asi02", "owasp-asi03"]
+    },
+    {
       "group": "Protocol",
       "pages": ["protocol/spec"]
     }
