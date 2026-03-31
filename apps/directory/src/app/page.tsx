@@ -1,5 +1,7 @@
 import { createServerClient } from '@/lib/supabase-server';
 
+type TrustGrade = 'unverified' | 'low' | 'medium' | 'high' | 'verified';
+
 interface Agent {
   id: string;
   owner_id: string;
@@ -7,7 +9,17 @@ interface Agent {
   public_key: string;
   created_at: string;
   metadata: Record<string, unknown>;
+  trust_score: number | null;
+  trust_grade: TrustGrade | null;
 }
+
+const TRUST_BADGE: Record<TrustGrade, { label: string; style: string }> = {
+  unverified: { label: 'Unverified', style: 'bg-gray-800/60 text-gray-400 border-gray-700' },
+  low:        { label: 'Low Trust', style: 'bg-yellow-900/40 text-yellow-400 border-yellow-800' },
+  medium:     { label: 'Medium Trust', style: 'bg-blue-900/40 text-blue-400 border-blue-800' },
+  high:       { label: 'High Trust', style: 'bg-green-900/40 text-green-400 border-green-800' },
+  verified:   { label: 'Verified', style: 'bg-emerald-900/40 text-emerald-300 border-emerald-700' },
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -93,9 +105,7 @@ function AgentCard({ agent }: { agent: Agent }) {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-gray-100">{agent.name}</span>
-              <span className="text-xs px-2 py-0.5 rounded border bg-green-900/50 text-green-300 border-green-700 font-medium">
-                verified
-              </span>
+              <TrustBadge grade={agent.trust_grade} />
             </div>
             <div className="text-xs text-gray-500 mt-0.5 font-mono">{agent.id}</div>
           </div>
@@ -109,5 +119,24 @@ function AgentCard({ agent }: { agent: Agent }) {
         Public key: <span className="font-mono text-gray-500">{keyPreview}</span>
       </div>
     </div>
+  );
+}
+
+function TrustBadge({ grade }: { grade: TrustGrade | null }) {
+  const g = grade ?? 'unverified';
+  const badge = TRUST_BADGE[g];
+  const isVerified = g === 'verified';
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border font-medium ${badge.style}`}>
+      {isVerified ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      ) : (
+        <span className="shrink-0">●</span>
+      )}
+      {badge.label}
+    </span>
   );
 }

@@ -2,6 +2,8 @@ import { createSignedEvent } from './events/signing.js';
 import { SupabaseTransport } from './transport/supabase.js';
 import { PolicyEngine } from './policy/index.js';
 import { OversightGate } from './oversight/index.js';
+import { computeTrustScore } from './trust/posture.js';
+import type { AgentTrustProfile } from './trust/posture.js';
 import type { AgentEvent, AgentEventInput } from './events/schema.js';
 import type { Policy } from './policy/index.js';
 import type { OversightConfig } from './oversight/index.js';
@@ -43,6 +45,7 @@ export class MandateZClient {
   private transport: SupabaseTransport;
   private policyEngine: PolicyEngine;
   private oversightGate: OversightGate | null;
+  private trustProfile: AgentTrustProfile | null = null;
 
   constructor(config: MandateZClientConfig) {
     this.agentId = config.agentId;
@@ -109,7 +112,12 @@ export class MandateZClient {
       outcome = oversightResult.outcome;
     }
 
-    // Step 4: Sign and emit
+    // Step 4: Sign and emit — include trust_score in metadata
+    const metadata = {
+      ...(input.metadata ?? {}),
+      trust_score: this.trustProfile?.trust_score ?? 0,
+    };
+
     const eventInput: AgentEventInput = {
       agent_id: this.agentId,
       owner_id: this.ownerId,
@@ -117,10 +125,36 @@ export class MandateZClient {
       resource: input.resource,
       outcome,
       policy_id: policyId ?? null,
-      metadata: input.metadata ?? {},
+      metadata,
     };
 
     const signed = await createSignedEvent(eventInput, this.privateKey);
-    return this.transport.emitEvent(signed);
+    const emitted = await this.transport.emitEvent(signed);
+
+    // Fire-and-forget: recompute trust score in background
+    this.recomputeTrustScore().catch(() => {});
+
+    return emitted;
+  }
+
+  /**
+   * Fetches all events for this agent from Supabase, recomputes
+   * the trust score, and updates the agents table.
+   */
+  async recomputeTrustScore(): Promise<AgentTrustProfile> {
+    const events = await this.transport.fetchAgentEvents(this.agentId);
+    const profile = computeTrustScore(events);
+    this.trustProfile = profile;
+
+    await this.transport.updateAgentTrust(this.agentId, profile);
+
+    return profile;
+  }
+
+  /**
+   * Returns the last computed trust profile, or null if not yet computed.
+   */
+  getTrustProfile(): AgentTrustProfile | null {
+    return this.trustProfile;
   }
 }

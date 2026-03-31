@@ -40,6 +40,10 @@
       "pages": ["sdk/track"]
     },
     {
+      "group": "Trust & Security",
+      "pages": ["trust-scoring"]
+    },
+    {
       "group": "OWASP Compliance",
       "pages": ["owasp-asi01", "owasp-asi02", "owasp-asi03"]
     },

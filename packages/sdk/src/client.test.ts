@@ -12,6 +12,10 @@ vi.mock('./transport/supabase.js', () => {
       async emitEvent(event: unknown) {
         return event;
       }
+      async fetchAgentEvents() {
+        return [];
+      }
+      async updateAgentTrust() {}
     },
   };
 });
@@ -76,7 +80,7 @@ describe('MandateZClient', () => {
       });
 
       expect(event.policy_id).toBeNull();
-      expect(event.metadata).toEqual({});
+      expect(event.metadata).toEqual({ trust_score: 0 });
     });
 
     it('passes through explicit outcome, policy_id, and metadata', async () => {
@@ -91,7 +95,7 @@ describe('MandateZClient', () => {
 
       expect(event.outcome).toBe('blocked');
       expect(event.policy_id).toBe('pol_no_export');
-      expect(event.metadata).toEqual({ reason: 'compliance' });
+      expect(event.metadata).toEqual({ reason: 'compliance', trust_score: 0 });
     });
   });
 

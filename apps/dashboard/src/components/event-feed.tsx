@@ -17,6 +17,21 @@ interface AgentEvent {
   public_key: string;
 }
 
+type TrustGrade = 'unverified' | 'low' | 'medium' | 'high' | 'verified';
+
+interface AgentTrust {
+  trust_score: number | null;
+  trust_grade: TrustGrade | null;
+}
+
+const TRUST_GRADE_STYLE: Record<TrustGrade, string> = {
+  unverified: 'text-gray-400',
+  low:        'text-yellow-400',
+  medium:     'text-blue-400',
+  high:       'text-green-400',
+  verified:   'text-emerald-300',
+};
+
 const OUTCOME_STYLES: Record<string, string> = {
   allowed: 'bg-green-900/50 text-green-300 border-green-700',
   blocked: 'bg-red-900/50 text-red-300 border-red-700',
@@ -37,9 +52,23 @@ export function EventFeed() {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
+  const [agentTrust, setAgentTrust] = useState<Record<string, AgentTrust>>({});
 
   useEffect(() => {
     const supabase = getSupabaseBrowser();
+
+    async function fetchAgentTrust() {
+      const { data } = await supabase
+        .from('agents')
+        .select('id, trust_score, trust_grade');
+      if (data) {
+        const map: Record<string, AgentTrust> = {};
+        for (const a of data) {
+          map[a.id] = { trust_score: a.trust_score, trust_grade: a.trust_grade };
+        }
+        setAgentTrust(map);
+      }
+    }
 
     // Fetch initial events
     async function fetchEvents() {
@@ -56,6 +85,7 @@ export function EventFeed() {
     }
 
     fetchEvents();
+    fetchAgentTrust();
 
     // Subscribe to realtime inserts
     const channel = supabase
@@ -106,7 +136,7 @@ export function EventFeed() {
       ) : (
         <div className="space-y-2">
           {events.map((event) => (
-            <EventRow key={event.id} event={event} />
+            <EventRow key={event.id} event={event} trust={agentTrust[event.agent_id]} />
           ))}
         </div>
       )}
@@ -114,11 +144,13 @@ export function EventFeed() {
   );
 }
 
-function EventRow({ event }: { event: AgentEvent }) {
+function EventRow({ event, trust }: { event: AgentEvent; trust?: AgentTrust }) {
   const [expanded, setExpanded] = useState(false);
   const outcomeStyle = OUTCOME_STYLES[event.outcome] ?? 'bg-gray-800 text-gray-300 border-gray-700';
   const icon = ACTION_ICONS[event.action_type] ?? '⚡';
   const time = new Date(event.timestamp).toLocaleString();
+  const grade = trust?.trust_grade ?? 'unverified';
+  const gradeStyle = TRUST_GRADE_STYLE[grade];
 
   return (
     <div
@@ -131,6 +163,9 @@ function EventRow({ event }: { event: AgentEvent }) {
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm text-gray-300 truncate">
               {event.agent_id}
+            </span>
+            <span className={`text-xs font-medium ${gradeStyle}`} title={`Trust: ${trust?.trust_score ?? '—'}/100`}>
+              {trust?.trust_score != null ? `${trust.trust_score}` : '—'} · {grade}
             </span>
             <span className="text-gray-600">→</span>
             <span className="text-sm text-gray-200 truncate">

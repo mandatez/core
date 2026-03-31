@@ -16,6 +16,16 @@ interface AgentEvent {
   metadata: Record<string, unknown>;
 }
 
+type TrustGrade = 'unverified' | 'low' | 'medium' | 'high' | 'verified';
+
+const TRUST_BADGE_STYLE: Record<TrustGrade, string> = {
+  unverified: 'text-gray-500',
+  low:        'text-yellow-500',
+  medium:     'text-blue-400',
+  high:       'text-green-400',
+  verified:   'text-emerald-400',
+};
+
 const OUTCOME_LABELS: Record<string, { label: string; style: string }> = {
   allowed: { label: 'Allowed', style: 'bg-green-900/50 text-green-300 border-green-700' },
   blocked: { label: 'Blocked', style: 'bg-red-900/50 text-red-300 border-red-700' },
@@ -37,6 +47,7 @@ export function PersonalFeed() {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
+  const [agentGrades, setAgentGrades] = useState<Record<string, TrustGrade>>({});
 
   useEffect(() => {
     if (!isLoaded || !user) {
@@ -46,6 +57,18 @@ export function PersonalFeed() {
 
     const supabase = getSupabaseBrowser();
     const userId = user.id;
+
+    async function fetchAgentGrades() {
+      const { data } = await supabase
+        .from('agents')
+        .select('id, trust_grade')
+        .eq('owner_id', userId);
+      if (data) {
+        const map: Record<string, TrustGrade> = {};
+        for (const a of data) map[a.id] = a.trust_grade ?? 'unverified';
+        setAgentGrades(map);
+      }
+    }
 
     async function fetchEvents() {
       const { data, error } = await supabase
@@ -62,6 +85,7 @@ export function PersonalFeed() {
     }
 
     fetchEvents();
+    fetchAgentGrades();
 
     const channel = supabase
       .channel('consumer_events')
@@ -163,7 +187,7 @@ await client.track({ action_type: 'call', resource: 'hello/world' });`}</pre>
       ) : (
         <div className="space-y-2">
           {events.map((event) => (
-            <ActivityRow key={event.id} event={event} />
+            <ActivityRow key={event.id} event={event} grade={agentGrades[event.agent_id]} />
           ))}
         </div>
       )}
@@ -171,11 +195,13 @@ await client.track({ action_type: 'call', resource: 'hello/world' });`}</pre>
   );
 }
 
-function ActivityRow({ event }: { event: AgentEvent }) {
+function ActivityRow({ event, grade }: { event: AgentEvent; grade?: TrustGrade }) {
   const action = ACTION_LABELS[event.action_type] ?? { icon: '⚡', verb: 'Acted on' };
   const outcome = OUTCOME_LABELS[event.outcome] ?? { label: event.outcome, style: 'bg-gray-800 text-gray-300 border-gray-700' };
   const time = new Date(event.timestamp);
   const ago = getTimeAgo(time);
+  const g = grade ?? 'unverified';
+  const gradeStyle = TRUST_BADGE_STYLE[g];
 
   return (
     <div className="border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-colors">
@@ -185,6 +211,7 @@ function ActivityRow({ event }: { event: AgentEvent }) {
           <p className="text-sm text-gray-200">
             <span className="font-medium">{action.verb}</span>{' '}
             <span className="text-gray-300">{event.resource}</span>
+            <span className={`ml-2 text-[10px] font-medium ${gradeStyle}`}>{g}</span>
           </p>
           <p className="text-xs text-gray-500 mt-0.5">{ago}</p>
         </div>

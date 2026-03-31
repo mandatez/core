@@ -21,5 +21,8 @@ export type { OversightConfig, OversightResult, AlertChannel, OversightAlert, Ti
 export { MandateZClient } from './client.js';
 export type { MandateZClientConfig, TrackInput } from './client.js';
 
+export { computeTrustScore } from './trust/posture.js';
+export type { AgentTrustProfile } from './trust/posture.js';
+
 export { MandateZN8nHook } from './integrations/n8n/index.js';
 export { MandateZLangChainCallback } from './integrations/langchain/index.js';

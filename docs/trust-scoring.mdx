@@ -1,0 +1,97 @@
+---
+title: "Trust Scoring"
+description: "How MandateZ computes agent trust scores and what the grades mean."
+---
+
+# Trust Scoring
+
+Every agent registered with MandateZ receives a **trust score** (0–100) and a **trust grade**. The score is computed continuously and reflects how trustworthy an agent's behavior is over time.
+
+## Why Trust Scoring Exists
+
+When companies deploy dozens of AI agents — or interact with agents from other organizations — they need a fast, objective signal: **should I trust this agent?**
+
+Trust scoring provides that signal. It is visible in the Agent Directory, the Enterprise Dashboard, and the Consumer activity feed.
+
+## The Four Components
+
+The trust score is a weighted composite of four signals:
+
+| Component | Weight | What It Measures |
+|---|---|---|
+| **Policy Compliance** | 35% | Ratio of `allowed` outcomes to total actions. Agents that stay within policy score higher. |
+| **Signature Integrity** | 25% | Whether every event carries a valid Ed25519 signature matching the agent's registered public key. Any invalid signature drops this to zero. |
+| **Behavioral Consistency** | 20% | Variance in action patterns over time. Sudden spikes in `export` or `delete` actions reduce this component. |
+| **Longevity** | 20% | How long the agent has been active with a clean record. New agents start at 0 and accrue longevity linearly over 90 days. |
+
+### Score Calculation
+
+```
+trust_score = (policy_compliance × 0.35)
+            + (signature_integrity × 0.25)
+            + (behavioral_consistency × 0.20)
+            + (longevity × 0.20)
+```
+
+Each component is normalized to 0–100 before weighting.
+
+## Trust Grades
+
+The numeric score maps to a human-readable grade:
+
+| Score Range | Grade | Badge Color |
+|---|---|---|
+| 0–19 | `unverified` | Gray |
+| 20–39 | `low` | Yellow |
+| 40–59 | `medium` | Blue |
+| 60–79 | `high` | Green |
+| 80–100 | `verified` | Emerald |
+
+Grades are stored on the `agents` table as `trust_grade` and updated whenever the score changes.
+
+## Why Longevity Kills Sybil Attacks
+
+A Sybil attack creates many fake agents to game reputation systems. MandateZ defeats this because:
+
+1. **Longevity cannot be faked.** A new agent always starts at 0 longevity. It takes 90 days of continuous, clean operation to max out the longevity component.
+2. **Each agent has a unique Ed25519 keypair.** Creating a new identity means starting the longevity clock from zero.
+3. **Behavioral consistency penalizes bursts.** A freshly-created agent that immediately performs high-risk actions (exports, deletes, payments) sees its consistency score drop.
+
+The combination means an attacker would need to maintain hundreds of agents for 90+ days with clean behavior — making the attack economically impractical.
+
+## Code Example
+
+```typescript
+import { MandateZClient } from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  agentId:         'ag_abc123',
+  ownerId:         'your_org_id',
+  privateKey:      process.env.AGENT_PRIVATE_KEY!,
+  supabaseUrl:     process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+});
+
+// Fetch the trust profile for any agent
+const profile = await client.getTrustProfile('ag_abc123');
+
+console.log(profile);
+// {
+//   agent_id: 'ag_abc123',
+//   trust_score: 82,
+//   trust_grade: 'verified',
+//   components: {
+//     policy_compliance: 95,
+//     signature_integrity: 100,
+//     behavioral_consistency: 68,
+//     longevity: 54,
+//   },
+//   last_updated: '2026-03-31T12:00:00Z',
+// }
+```
+
+## Where Trust Scores Appear
+
+- **Agent Directory** — badge next to every listed agent
+- **Enterprise Dashboard** — numeric score and grade per agent on every event row
+- **Consumer Feed** — small grade label next to the agent name on each action

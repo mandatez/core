@@ -1,0 +1,10 @@
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS trust_score integer DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS trust_grade text DEFAULT 'unverified';
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS total_events integer DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS allowed_ratio decimal DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS flagged_ratio decimal DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS blocked_ratio decimal DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS human_approvals integer DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS human_rejections integer DEFAULT 0;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS first_seen timestamptz;
+ALTER TABLE agents ADD COLUMN IF NOT EXISTS last_active timestamptz;
