@@ -1,4 +1,4 @@
-# MandateZ — Claude Code Intelligence File
+# MandateZ — Project Intelligence File
 
 > Read this file at the start of every session before writing a single line of code.
 > This is the single source of truth for what we are building, why, and how.
@@ -313,7 +313,7 @@ any hyperscaler can standardize a competing spec.
 
 ---
 
-## What Claude Code Should Never Do
+## What the AI Assistant Should Never Do
 
 - Never build a separate data layer for a new surface — always extend the spine
 - Never hardcode API keys or secrets — always use environment variables
@@ -358,4 +358,4 @@ NEXT_PUBLIC_APP_URL=
 
 *Last updated: March 2026*
 *Reviewer: The King*
-*Builder: Claude Code*
+*Builder: AI assistant*
