@@ -65,7 +65,7 @@ export function PersonalFeed() {
         .eq('owner_id', userId);
       if (data) {
         const map: Record<string, TrustGrade> = {};
-        for (const a of data) map[a.id] = a.trust_grade ?? 'unverified';
+        for (const a of data as { id: string; trust_grade: TrustGrade | null }[]) map[a.id] = a.trust_grade ?? 'unverified';
         setAgentGrades(map);
       }
     }

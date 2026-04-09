@@ -63,7 +63,7 @@ export function EventFeed() {
         .select('id, trust_score, trust_grade');
       if (data) {
         const map: Record<string, AgentTrust> = {};
-        for (const a of data) {
+        for (const a of data as { id: string; trust_score: number | null; trust_grade: TrustGrade | null }[]) {
           map[a.id] = { trust_score: a.trust_score, trust_grade: a.trust_grade };
         }
         setAgentTrust(map);

@@ -1,0 +1,43 @@
+{
+  "name": "@mandatez/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for MandateZ — AI agent trust infrastructure via Model Context Protocol",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "mandatez-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mandatez/core"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "mandatez",
+    "trust",
+    "compliance",
+    "ed25519"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@mandatez/sdk": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0"
+  }
+}

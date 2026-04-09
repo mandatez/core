@@ -1,4 +1,5 @@
 import { PersonalFeed } from '@/components/personal-feed';
+import { TrustBanner } from '@/components/trust-banner';
 
 export default function ActivityPage() {
   return (
@@ -9,6 +10,7 @@ export default function ActivityPage() {
           Everything your AI assistants have done, in real time.
         </p>
       </div>
+      <TrustBanner />
       <PersonalFeed />
     </div>
   );
