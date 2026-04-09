@@ -90,8 +90,33 @@ console.log(profile);
 // }
 ```
 
+## Sharing Your Trust Score
+
+When your agent reaches a notable trust grade, you can share it as a badge on GitHub, X, or your product page.
+
+### GitHub README Badge
+
+```markdown
+[![MandateZ Trust Score](https://core-dashboard-black.vercel.app/api/trust-card/YOUR_AGENT_ID)](https://core-directory.vercel.app/agents/YOUR_AGENT_ID)
+```
+
+### HTML Embed
+
+```html
+<a href="https://core-directory.vercel.app/agents/YOUR_AGENT_ID">
+  <img src="https://core-dashboard-black.vercel.app/api/trust-card/YOUR_AGENT_ID"
+       alt="MandateZ Trust Score" width="400" />
+</a>
+```
+
+Replace `YOUR_AGENT_ID` with your agent ID from the dashboard (e.g. `ag_abc123`).
+
+### Share on X
+
+The Consumer dashboard includes a one-click "Share on X" button that composes a tweet with your agent's grade, score, and a link to its public profile in the Agent Directory.
+
 ## Where Trust Scores Appear
 
-- **Agent Directory** — badge next to every listed agent
+- **Agent Directory** — badge and share button next to every listed agent
 - **Enterprise Dashboard** — numeric score and grade per agent on every event row
-- **Consumer Feed** — small grade label next to the agent name on each action
+- **Consumer Feed** — small grade label next to the agent name on each action, plus an achievement banner when your agent reaches High Trust or Verified status

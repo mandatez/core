@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase-server';
 
 type TrustGrade = 'unverified' | 'low' | 'medium' | 'high' | 'verified';
@@ -11,6 +12,10 @@ interface Agent {
   metadata: Record<string, unknown>;
   trust_score: number | null;
   trust_grade: TrustGrade | null;
+  total_events: number | null;
+  allowed_ratio: number | null;
+  first_seen: string | null;
+  last_active: string | null;
 }
 
 const TRUST_BADGE: Record<TrustGrade, { label: string; style: string }> = {
@@ -19,6 +24,14 @@ const TRUST_BADGE: Record<TrustGrade, { label: string; style: string }> = {
   medium:     { label: 'Medium Trust', style: 'bg-blue-900/40 text-blue-400 border-blue-800' },
   high:       { label: 'High Trust', style: 'bg-green-900/40 text-green-400 border-green-800' },
   verified:   { label: 'Verified', style: 'bg-emerald-900/40 text-emerald-300 border-emerald-700' },
+};
+
+const GRADE_COLORS: Record<TrustGrade, string> = {
+  verified: '#10b981',
+  high: '#3b82f6',
+  medium: '#6366f1',
+  low: '#f59e0b',
+  unverified: '#6b7280',
 };
 
 export const dynamic = 'force-dynamic';
@@ -91,32 +104,73 @@ Content-Type: application/json
   );
 }
 
+function MiniScoreArc({ score, grade }: { score: number; grade: TrustGrade }) {
+  const color = GRADE_COLORS[grade];
+  const r = 20;
+  const circ = 2 * Math.PI * r;
+  const arcFrac = (score / 100) * 0.75;
+  const dash = circ * arcFrac;
+  const gap = circ - dash;
+
+  return (
+    <svg width="56" height="56" viewBox="-28 -28 56 56" className="shrink-0">
+      <circle cx="0" cy="0" r={r} fill="none" stroke="#1f1f1f" strokeWidth="4"
+        strokeDasharray={`${circ * 0.75} ${circ * 0.25}`}
+        strokeDashoffset={circ * 0.25}
+        strokeLinecap="round" transform="rotate(135)" />
+      <circle cx="0" cy="0" r={r} fill="none" stroke={color} strokeWidth="4"
+        strokeDasharray={`${dash} ${gap}`}
+        strokeDashoffset={circ * 0.25}
+        strokeLinecap="round" transform="rotate(135)" />
+      <text x="0" y="2" textAnchor="middle" dominantBaseline="middle"
+        className="fill-white" style={{ fontSize: '14px', fontWeight: 700 }}>
+        {Math.round(score)}
+      </text>
+    </svg>
+  );
+}
+
 function AgentCard({ agent }: { agent: Agent }) {
   const registered = new Date(agent.created_at).toLocaleDateString();
-  const keyPreview = agent.public_key.slice(0, 16) + '...';
+  const grade: TrustGrade = agent.trust_grade ?? 'unverified';
+  const score = agent.trust_score ?? 0;
+  const events = agent.total_events ?? 0;
+  const allowed = agent.allowed_ratio != null ? (agent.allowed_ratio * 100).toFixed(1) : '0.0';
 
   return (
     <div className="border border-gray-800 rounded-lg p-5 hover:border-gray-700 transition-colors">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-900/40 text-blue-300 text-sm font-bold">
-            {agent.name.charAt(0).toUpperCase()}
-          </span>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-gray-100">{agent.name}</span>
-              <TrustBadge grade={agent.trust_grade} />
-            </div>
-            <div className="text-xs text-gray-500 mt-0.5 font-mono">{agent.id}</div>
+      <div className="flex items-center gap-4">
+        <MiniScoreArc score={score} grade={grade} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Link href={`/agents/${agent.id}`} className="font-medium text-gray-100 hover:underline">
+              {agent.name}
+            </Link>
+            <TrustBadge grade={agent.trust_grade} />
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5 font-mono">{agent.id}</div>
+          <div className="flex gap-4 mt-2 text-xs text-gray-500">
+            <span>{events.toLocaleString()} events</span>
+            <span>{allowed}% allowed</span>
+            <span>Registered {registered}</span>
           </div>
         </div>
-        <div className="text-right text-xs text-gray-500">
-          <div>{agent.owner_id}</div>
-          <div className="mt-0.5">Registered {registered}</div>
-        </div>
-      </div>
-      <div className="mt-3 text-xs text-gray-600">
-        Public key: <span className="font-mono text-gray-500">{keyPreview}</span>
+        <Link
+          href={`/agents/${agent.id}`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium transition-colors shrink-0"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
+          </svg>
+          Share
+        </Link>
+        <Link href={`/agents/${agent.id}`} className="shrink-0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
       </div>
     </div>
   );
