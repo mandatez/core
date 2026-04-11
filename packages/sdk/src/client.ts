@@ -3,10 +3,12 @@ import { SupabaseTransport } from './transport/supabase.js';
 import { PolicyEngine } from './policy/index.js';
 import { OversightGate } from './oversight/index.js';
 import { computeTrustScore } from './trust/posture.js';
+import { checkIdentity as hibpCheckIdentity } from './identity/hibp.js';
 import type { AgentTrustProfile } from './trust/posture.js';
 import type { AgentEvent, AgentEventInput } from './events/schema.js';
 import type { Policy } from './policy/index.js';
 import type { OversightConfig } from './oversight/index.js';
+import type { IdentityCheckResult } from './identity/hibp.js';
 
 /** The action fields a developer passes to track() */
 export interface TrackInput {
@@ -30,6 +32,21 @@ export interface MandateZClientConfig {
   policies?: Policy[];
   /** Optional oversight config — if provided, flagged actions pause for human approval */
   oversight?: OversightConfig;
+  /** HaveIBeenPwned API key — required for checkIdentity() */
+  hibpApiKey?: string;
+}
+
+export interface CheckIdentityInput {
+  email: string;
+  /** Override the client's default agentId for this check */
+  agentId?: string;
+  /** What to do when an identity comes back flagged. Defaults to 'restrict'. */
+  onFlagged?: 'restrict' | 'block' | 'allow';
+}
+
+export interface CheckIdentityOutput extends IdentityCheckResult {
+  /** Effective action to take based on status + onFlagged policy */
+  recommendation: 'allow' | 'restrict' | 'block';
 }
 
 /**
@@ -46,11 +63,13 @@ export class MandateZClient {
   private policyEngine: PolicyEngine;
   private oversightGate: OversightGate | null;
   private trustProfile: AgentTrustProfile | null = null;
+  private hibpApiKey: string | null;
 
   constructor(config: MandateZClientConfig) {
     this.agentId = config.agentId;
     this.ownerId = config.ownerId;
     this.privateKey = config.privateKey;
+    this.hibpApiKey = config.hibpApiKey ?? null;
     this.transport = new SupabaseTransport({
       supabaseUrl: config.supabaseUrl,
       supabaseAnonKey: config.supabaseAnonKey,
@@ -156,5 +175,43 @@ export class MandateZClient {
    */
   getTrustProfile(): AgentTrustProfile | null {
     return this.trustProfile;
+  }
+
+  /**
+   * Checks an email against HaveIBeenPwned, stores the result in
+   * Supabase (identity_checks table), and returns a recommendation.
+   *
+   * Recommendation logic:
+   * - status=clean    → allow
+   * - status=flagged  → onFlagged (default: 'restrict')
+   * - status=blocked  → block (cannot be overridden)
+   */
+  async checkIdentity(input: CheckIdentityInput): Promise<CheckIdentityOutput> {
+    if (!this.hibpApiKey) {
+      throw new Error(
+        'MandateZClient: hibpApiKey is required in config to call checkIdentity()',
+      );
+    }
+
+    const result = await hibpCheckIdentity(input.email, this.hibpApiKey);
+    const agentId = input.agentId ?? this.agentId;
+
+    // Fire-and-forget persistence — don't let Supabase failures block the caller
+    this.transport
+      .insertIdentityCheck({
+        ownerId: this.ownerId,
+        agentId,
+        email: input.email,
+        result,
+      })
+      .catch(() => {});
+
+    const onFlagged = input.onFlagged ?? 'restrict';
+    let recommendation: 'allow' | 'restrict' | 'block';
+    if (result.status === 'blocked') recommendation = 'block';
+    else if (result.status === 'flagged') recommendation = onFlagged;
+    else recommendation = 'allow';
+
+    return { ...result, recommendation };
   }
 }

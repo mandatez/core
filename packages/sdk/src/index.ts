@@ -19,7 +19,15 @@ export { OversightGate, SlackAlertChannel, WebhookAlertChannel } from './oversig
 export type { OversightConfig, OversightResult, AlertChannel, OversightAlert, TimeoutAction, ApprovalDecision } from './oversight/index.js';
 
 export { MandateZClient } from './client.js';
-export type { MandateZClientConfig, TrackInput } from './client.js';
+export type {
+  MandateZClientConfig,
+  TrackInput,
+  CheckIdentityInput,
+  CheckIdentityOutput,
+} from './client.js';
+
+export { checkIdentity, scoreBreaches } from './identity/hibp.js';
+export type { IdentityCheckResult, IdentityStatus, HibpBreach } from './identity/hibp.js';
 
 export { computeTrustScore } from './trust/posture.js';
 export type { AgentTrustProfile } from './trust/posture.js';

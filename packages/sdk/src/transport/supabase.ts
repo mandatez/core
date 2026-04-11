@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { AgentEvent } from '../events/schema.js';
 import type { AgentTrustProfile } from '../trust/posture.js';
+import type { IdentityCheckResult } from '../identity/hibp.js';
 
 export interface SupabaseTransportConfig {
   supabaseUrl: string;
@@ -67,6 +68,30 @@ export class SupabaseTransport {
       signature: row.signature as string,
       public_key: row.public_key as string,
     }));
+  }
+
+  /**
+   * Inserts an identity check result into the identity_checks table.
+   */
+  async insertIdentityCheck(params: {
+    ownerId: string;
+    agentId: string;
+    email: string;
+    result: IdentityCheckResult;
+  }): Promise<void> {
+    const { error } = await this.client.from('identity_checks').insert({
+      owner_id: params.ownerId,
+      agent_id: params.agentId,
+      email: params.email,
+      risk_score: params.result.risk_score,
+      breach_count: params.result.breach_count,
+      breaches: params.result.breaches,
+      status: params.result.status,
+    });
+
+    if (error) {
+      throw new Error(`Failed to insert identity check: ${error.message}`);
+    }
   }
 
   /**

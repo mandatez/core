@@ -9,6 +9,7 @@ import {
   SupabaseTransport,
   PolicyEngine,
   computeTrustScore,
+  checkIdentity as hibpCheckIdentity,
 } from '@mandatez/sdk';
 import type {
   AgentEventInput,
@@ -22,6 +23,7 @@ import type {
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const OWNER_ID = process.env.MANDATEZ_OWNER_ID ?? 'default-owner';
+const HIBP_API_KEY = process.env.HIBP_API_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error(
@@ -41,7 +43,7 @@ const transport = new SupabaseTransport({
 
 const server = new McpServer({
   name: 'mandatez',
-  version: '0.1.0',
+  version: '0.1.1',
 });
 
 // ---------------------------------------------------------------------------
@@ -343,6 +345,87 @@ server.tool(
           {
             type: 'text' as const,
             text: `Failed to get audit trail: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Tool 6 — check_identity
+// ---------------------------------------------------------------------------
+
+server.tool(
+  'check_identity',
+  'Check if an email has been involved in known data breaches before allowing agent access. Uses HaveIBeenPwned.',
+  {
+    email: z.string().email().describe('Email address to check against HIBP'),
+    agent_id: z.string().describe('Agent ID that is about to interact with this identity'),
+    on_flagged: z
+      .enum(['restrict', 'block', 'allow'])
+      .optional()
+      .describe('What to do if the identity is flagged (default: restrict)'),
+  },
+  async ({ email, agent_id, on_flagged }) => {
+    if (!HIBP_API_KEY) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'HIBP_API_KEY environment variable is not set. Set it to enable identity checks.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    try {
+      const result = await hibpCheckIdentity(email, HIBP_API_KEY);
+
+      // Persist to identity_checks via transport (fire-and-forget-ish)
+      await transport
+        .insertIdentityCheck({
+          ownerId: OWNER_ID,
+          agentId: agent_id,
+          email,
+          result,
+        })
+        .catch(() => {});
+
+      const onFlagged = on_flagged ?? 'restrict';
+      let recommendation: 'allow' | 'restrict' | 'block';
+      if (result.status === 'blocked') recommendation = 'block';
+      else if (result.status === 'flagged') recommendation = onFlagged;
+      else recommendation = 'allow';
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                email,
+                agent_id,
+                status: result.status,
+                risk_score: result.risk_score,
+                breach_count: result.breach_count,
+                breaches: result.breaches.map((b) => b.name),
+                recommendation,
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Identity check failed: ${err instanceof Error ? err.message : String(err)}`,
           },
         ],
         isError: true,

@@ -24,6 +24,9 @@ export default function RootLayout({
               <Link href="/" className="hover:text-gray-200 transition-colors">
                 Events
               </Link>
+              <Link href="/identity" className="hover:text-gray-200 transition-colors">
+                Identity Checks
+              </Link>
               <Link href="/reports" className="hover:text-gray-200 transition-colors">
                 Reports
               </Link>
