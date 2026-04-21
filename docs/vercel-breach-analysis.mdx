@@ -1,0 +1,343 @@
+---
+title: "The Vercel Breach Was an AI Agent Governance Failure"
+description: "A technical breakdown of the Vercel/Context.ai incident and the exact MandateZ configuration that would have blocked it."
+date: "2026-04-21"
+---
+
+# The Vercel Breach Was an AI Agent Governance Failure
+
+On paper, the Vercel/Context.ai incident looks like a standard credential leak. Read the post-mortem closely and a different story emerges: an AI agent with an over-scoped OAuth token performed a chain of actions no human operator would have been authorized to perform — and there was no governance layer to stop it.
+
+This is not a credential problem. It is an **agent governance** problem. The agent had legitimate access. What it lacked was a mandate.
+
+This post walks through the attack chain, maps it to the OWASP Agentic Security Initiative taxonomy, and shows the exact MandateZ policy, identity, and audit-trail configuration that would have blocked the blast radius at three separate layers.
+
+---
+
+## 1. What Happened — Technical Breakdown
+
+The public timeline compresses into four stages. Each stage is a governance failure that compounded the next.
+
+### Stage 1 — Initial foothold via an over-scoped deploy hook
+
+A third-party integration (Context.ai's indexing agent) was authorized against a Vercel project with a deploy-scoped OAuth token. The token carried `project:read`, `deployment:read`, and — critically — `env:read` scopes on the parent team, not just the single project the integration was installed into.
+
+The token was issued once, stored server-side at the integration vendor, and never rotated.
+
+### Stage 2 — Credential pivot into unrelated projects
+
+When the vendor's environment was compromised, the attacker replayed the same OAuth token against Vercel's API. Because the token was bound to a session, not to a specific agent identity, Vercel's API had no way to distinguish a legitimate call from the vendor's infrastructure from a replay from an attacker's infrastructure.
+
+The token's `env:read` scope spanned every project the installing user had access to. One token. Hundreds of projects. Dozens of `.env` payloads containing production database credentials, third-party API keys, and in several cases long-lived service-account tokens.
+
+### Stage 3 — Lateral movement through harvested secrets
+
+The exfiltrated environment variables included credentials for Supabase, Stripe, Anthropic, OpenAI, and customer-owned S3 buckets. The attacker chained these forward: Supabase service-role keys read the full customer tables, Stripe keys enumerated subscriptions, and S3 credentials pulled backups.
+
+At no point did the originating agent's behavior look anomalous **to Vercel's API**, because Vercel's API was answering a valid token. The anomaly was visible only at the agent layer — an agent that normally performed read-only indexing was suddenly iterating every project in the team.
+
+### Stage 4 — Silent persistence
+
+The compromise was detected only after a downstream customer noticed unusual Stripe activity. Between initial exfiltration and detection: **nine days**. No alert fired because no system was watching the agent's action distribution.
+
+---
+
+## 2. The OWASP Mapping
+
+The OWASP Agentic Security Initiative (ASI) taxonomy has a row for exactly this failure mode. In fact, the Vercel incident is a clean instance of two ASI categories stacked on top of each other.
+
+### ASI-02 — Tool Misuse / Insufficient Authorization
+
+The indexing agent was authorized to read project metadata. It was **not** semantically authorized to enumerate every environment variable in a 400-project team. Those are different actions, but OAuth scope collapsed them into one permission.
+
+ASI-02 is explicit: _an agent must be authorized per-action, not per-session_. Agent frameworks that inherit a user's OAuth token inherit the entire scope of that token, which is almost never the scope the agent actually needs.
+
+See [ASI-02: Insufficient Authorization](/owasp-asi02) for the full mitigation pattern.
+
+### ASI-03 — Privilege Compromise / Identity Abuse
+
+The token had no agent identity attached to it. When the attacker replayed it from a different IP, a different user agent, and a non-vendor ASN, the API had nothing to compare against. There was no public key, no signature, no bound identity — just a bearer secret.
+
+ASI-03 requires every agent to carry a **verifiable, non-transferable identity**. OAuth bearer tokens fail this requirement by design: they are transferable by whoever possesses them.
+
+See [ASI-03: Identity Abuse](/owasp-asi03) for the full mitigation pattern.
+
+The stacking is what made this incident catastrophic. ASI-02 made the blast radius huge. ASI-03 made the pivot invisible.
+
+---
+
+## 3. The Policy Configuration That Would Have Blocked It
+
+MandateZ policies operate before action execution, not after logging. A properly-scoped policy on the indexing agent would have refused Stage 1 outright.
+
+```typescript
+import { MandateZClient, generateAgentIdentity } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+
+const client = new MandateZClient({
+  agentId: identity.agent_id,
+  ownerId: 'context_ai_org',
+  privateKey: identity.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  policies: [{
+    id: 'pol_indexing_agent',
+    owner_id: 'context_ai_org',
+    name: 'Vercel Indexing Agent — Least Privilege',
+    rules: [
+      // Allowed: read deployment metadata for the single installed project
+      {
+        id: 'r1',
+        action_types: ['read'],
+        resource_pattern: 'vercel/projects/proj_installed_only/deployments/*',
+        effect: 'allow',
+      },
+
+      // Allowed: read build logs for the installed project
+      {
+        id: 'r2',
+        action_types: ['read'],
+        resource_pattern: 'vercel/projects/proj_installed_only/logs/*',
+        effect: 'allow',
+      },
+
+      // Blocked: environment variable access is never in scope for an indexer
+      {
+        id: 'r3',
+        action_types: ['read', 'export'],
+        resource_pattern: 'vercel/**/env/*',
+        effect: 'block',
+      },
+
+      // Flagged: any read outside the installed project requires human approval
+      {
+        id: 'r4',
+        action_types: ['read'],
+        resource_pattern: 'vercel/projects/*',
+        effect: 'flag',
+      },
+
+      // Default deny for anything not explicitly matched above
+      {
+        id: 'r5',
+        action_types: ['read', 'write', 'delete', 'export', 'call', 'payment'],
+        resource_pattern: '*',
+        effect: 'block',
+      },
+    ],
+  }],
+  oversight: {
+    require_human_approval: ['export', 'delete', 'payment'],
+    alert_channel: 'slack',
+    timeout_seconds: 300,
+    timeout_action: 'block',
+  },
+});
+
+// Stage 2 attack replayed against this client:
+const attempted = await client.track({
+  action_type: 'read',
+  resource: 'vercel/projects/proj_unrelated_customer/env/DATABASE_URL',
+});
+
+console.log(attempted.outcome);   // 'blocked'
+console.log(attempted.policy_id); // 'pol_indexing_agent'
+// Event signed, stored, and surfaced in the dashboard — even though it was blocked.
+```
+
+Three things matter about this configuration:
+
+1. **Default-deny** (rule `r5`) means any resource pattern not explicitly allowed is blocked. The attacker cannot pivot into a resource class that nobody thought to enumerate.
+2. **`env/*` is blocked at the resource pattern level** (rule `r3`), independent of whether the agent has a Vercel OAuth scope for it. MandateZ enforces semantic scope, not OAuth scope.
+3. **Cross-project reads flag for human approval** (rule `r4`). Even if an attacker bypassed the indexing scope somehow, the second project they touched would have paused for a human in Slack.
+
+Any one of these three would have ended the attack. All three together made it impossible.
+
+---
+
+## 4. How Ed25519 Identity Prevents Credential Pivot
+
+OAuth bearer tokens are **transferable**. Whoever possesses the token _is_ the agent, from the server's perspective. This is the design flaw that let the Context.ai token pivot into an attacker's infrastructure without any signal.
+
+Ed25519-signed agent identities are **non-transferable**. The agent proves possession of the private key by signing each event. The server verifies against the registered public key. A stolen event cannot be replayed from a new environment without also stealing the private key — and even then, every signed event is bound to a timestamp and event ID that cannot be silently reused.
+
+### Side-by-side
+
+| | OAuth Bearer Token | Ed25519 Agent Identity |
+|---|---|---|
+| Proves possession | Sending the token | Signing with private key |
+| Transferable | Yes — bearer is identity | No — signature is identity |
+| Replay detection | Requires external IP/ASN heuristics | Built in via event ID + timestamp |
+| Scope boundary | OAuth scope (per-token) | Policy rules (per-action) |
+| Revocation blast radius | All calls from that token | One agent only |
+| Cross-vendor verification | Requires a shared auth server | Public-key verification, no server |
+
+### The code difference
+
+With OAuth, the credential is a string you attach to every call:
+
+```typescript
+// OAuth — attacker with the token IS the agent
+await fetch('https://api.vercel.com/v9/projects/*/env', {
+  headers: { Authorization: `Bearer ${LEAKED_TOKEN}` },
+});
+// Server has no way to know this isn't the legitimate indexer.
+```
+
+With MandateZ, the credential is a keypair that signs each event:
+
+```typescript
+import { generateAgentIdentity, verifyEvent } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+// identity.private_key never leaves the agent's runtime.
+
+const event = await client.track({
+  action_type: 'read',
+  resource: 'vercel/projects/proj_x/env/DATABASE_URL',
+});
+
+// Anyone — including Vercel — can verify:
+const valid = await verifyEvent(event);
+// valid === true only if the event was signed by the registered agent's private key.
+```
+
+If an attacker exfiltrates the event log, they cannot replay events: each event's signature is bound to its content. They cannot forge new events: they do not have the private key. They cannot impersonate the agent against a downstream API that checks signatures: the verification fails.
+
+This is the structural difference between a **bearer** token and a **signed** identity.
+
+---
+
+## 5. The Audit Trail That Would Have Surfaced It in Real Time
+
+In the actual Vercel incident, detection lag was nine days. With MandateZ running on the indexing agent, the anomaly signature would have been visible within the first 30 seconds of Stage 2.
+
+### What the dashboard would have shown
+
+The live event feed shows every action — allowed, blocked, and flagged — in chronological order. Three signals would have fired immediately:
+
+**Signal 1 — Blocked-action spike.** Normally the indexer produces ~0 blocked events per hour. In Stage 2, the attacker's enumeration loop produces hundreds of `blocked` events per minute against `vercel/**/env/*`. The dashboard's per-agent `blocked_rate_per_minute` metric crosses threshold in under 30 seconds.
+
+**Signal 2 — Trust score collapse.** MandateZ's [trust scoring](/trust-scoring) includes a Behavioral Consistency component that measures variance in action patterns. A sudden burst of cross-project reads with no historical precedent drops the agent's score from the verified tier into the low tier within a single scoring window. The grade change is visible in the Agent Directory publicly.
+
+**Signal 3 — Oversight queue backlog.** Rule `r4` in the policy above flags every cross-project read for human approval. Within the first minute of the attack, the Slack oversight channel fills with hundreds of pending approvals. No human approves them. The `timeout_action: 'block'` setting auto-blocks each one after 300 seconds, but the human sees the queue in real time and can kill-switch the agent.
+
+### The kill switch
+
+Every agent in the MandateZ dashboard has a one-click revoke button. Revocation works by rotating the agent's registered public key — every subsequent event signature fails verification, and every policy check returns blocked by default.
+
+For the Context.ai scenario, the response window would have shrunk from nine days to under five minutes.
+
+### What the audit export looks like
+
+Every event is signed and timestamped. The compliance export produces a tamper-evident PDF + JSON bundle that includes:
+
+- Every action the agent attempted, allowed or blocked
+- The policy rule that matched each action
+- The Ed25519 signature on each event
+- The public key the signature verifies against
+- A Merkle-style chain proving no events were inserted or deleted after the fact
+
+This is the artifact regulators and downstream customers will ask for after the next incident. Having it ready is the difference between a 24-hour disclosure and a 90-day forensic investigation.
+
+---
+
+## 6. How to Implement MandateZ Governance in 5 Minutes
+
+If you are running any agent today — an indexing bot, a support agent, a deployment webhook handler — here is the minimum configuration that closes the Vercel-class failure mode.
+
+### Step 1 — Install
+
+```bash
+npm install @mandatez/sdk
+```
+
+### Step 2 — Give the agent its own identity
+
+```typescript
+import { generateAgentIdentity } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+// Store identity.private_key in your secret manager — this agent only.
+```
+
+Do not share this keypair with other agents, other environments, or other services. One agent, one keypair. That is what makes revocation surgical.
+
+### Step 3 — Wire up the client with a least-privilege policy
+
+```typescript
+import { MandateZClient } from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  agentId: identity.agent_id,
+  ownerId: 'your_org_id',
+  privateKey: identity.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  policies: [{
+    id: 'pol_default',
+    owner_id: 'your_org_id',
+    name: 'Production Default',
+    rules: [
+      // Allow the exact actions the agent needs.
+      { id: 'r1', action_types: ['read'], resource_pattern: 'app/public/*', effect: 'allow' },
+
+      // Block the high-risk categories outright.
+      { id: 'r2', action_types: ['export', 'delete'], resource_pattern: '*', effect: 'block' },
+
+      // Flag payments and writes for human approval.
+      { id: 'r3', action_types: ['payment', 'write'], resource_pattern: '*', effect: 'flag' },
+
+      // Default deny.
+      { id: 'r4', action_types: ['read', 'write', 'delete', 'export', 'call', 'payment'], resource_pattern: '*', effect: 'block' },
+    ],
+  }],
+  oversight: {
+    require_human_approval: ['export', 'delete', 'payment'],
+    alert_channel: 'slack',
+    timeout_seconds: 300,
+    timeout_action: 'block',
+  },
+});
+```
+
+### Step 4 — Replace direct API calls with `client.track()`
+
+Anywhere your agent currently calls a third-party API, wrap it:
+
+```typescript
+const event = await client.track({
+  action_type: 'read',
+  resource: 'vercel/projects/proj_x/deployments',
+});
+
+if (event.outcome !== 'allowed') {
+  throw new Error(`Action blocked by policy ${event.policy_id}`);
+}
+
+// Only now call the actual API.
+const data = await vercelApi.getDeployments('proj_x');
+```
+
+### Step 5 — Verify at the dashboard
+
+Open your MandateZ dashboard. You should see every agent action streaming in, signed, policy-checked, and trust-scored. If a Vercel-class attack begins, you see it in the first minute.
+
+That is the entire integration. Five steps, under five minutes, and the Context.ai failure mode is structurally closed.
+
+---
+
+## The Takeaway
+
+The Vercel breach was not a credential hygiene failure. It was the absence of an agent governance layer between the credential and the resources it could touch.
+
+Every post-incident conversation this month has asked the same question: _how do we make sure this doesn't happen with our agents?_ The answer is not better token rotation. It is a dedicated authorization layer that evaluates each action against an explicit policy, signs each event with a non-transferable identity, and surfaces anomalies in real time.
+
+That layer is what MandateZ is. Every agent needs a mandate.
+
+---
+
+<Card title="Get Started" icon="rocket" href="/quickstart">
+  Stand up MandateZ on your first agent in under five minutes.
+</Card>

@@ -44,6 +44,10 @@
       "pages": ["trust-scoring"]
     },
     {
+      "group": "Case Studies",
+      "pages": ["vercel-breach-analysis"]
+    },
+    {
       "group": "OWASP Compliance",
       "pages": ["owasp-asi01", "owasp-asi02", "owasp-asi03"]
     },

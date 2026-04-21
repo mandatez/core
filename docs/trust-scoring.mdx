@@ -7,6 +7,10 @@ description: "How MandateZ computes agent trust scores and what the grades mean.
 
 Every agent registered with MandateZ receives a **trust score** (0–100) and a **trust grade**. The score is computed continuously and reflects how trustworthy an agent's behavior is over time.
 
+## Why Trust Scoring Exists — The Vercel Lesson
+
+The Vercel/Context.ai breach of April 2026 took nine days to detect. An indexing agent with an over-scoped OAuth token pivoted through hundreds of projects exfiltrating environment variables, and nothing flagged because no system was measuring the agent's own behavior. By the time a downstream customer noticed unusual Stripe activity, the damage was done. Trust scoring exists because _credential-level auth is not enough_ — companies deploying agents, and companies interacting with agents from other organizations, need a continuous, objective signal that reflects how an agent is actually behaving right now, not just whether its token is still valid. A collapsing trust score is the real-time signal that would have ended the Vercel incident on day one instead of day nine. For the full technical breakdown, see [The Vercel Breach Was an AI Agent Governance Failure](/vercel-breach-analysis).
+
 ## Why Trust Scoring Exists
 
 When companies deploy dozens of AI agents — or interact with agents from other organizations — they need a fast, objective signal: **should I trust this agent?**
