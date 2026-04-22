@@ -36,7 +36,34 @@ AI agents act autonomously. There is no standard way to prove what they did, enf
 npm install @mandatez/sdk
 ```
 
-## Usage
+## Configuration
+
+MandateZ supports two configuration modes. Pick one.
+
+### Enterprise mode — `apiKey` (recommended)
+
+Generate a key at `/keys` in the MandateZ dashboard. One revocable string replaces the raw Supabase credentials your agents used to carry:
+
+```typescript
+import { MandateZClient } from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  apiKey: process.env.MANDATEZ_API_KEY!,   // "mz_live_..."
+  agentId: 'ag_...',
+  ownerId: 'your_org_id',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+});
+```
+
+Why enterprise customers prefer this:
+- **Revocable** — rotate a compromised key from the dashboard in one click without touching Supabase.
+- **Auditable** — every key has a name, creation time, and `last_used_at` timestamp.
+- **Scoped** — keys are bound to an `owner_id`; they cannot reach another tenant's data.
+- **One string, one secret** — no pasting Supabase URLs into a Vercel env var.
+
+### Legacy mode — raw Supabase credentials (still supported)
+
+The original configuration still works for local dev, one-off integrations, and anyone already shipping on it:
 
 ```typescript
 import { generateAgentIdentity, MandateZClient } from '@mandatez/sdk';
@@ -49,7 +76,11 @@ const client = new MandateZClient({
   supabaseUrl: process.env.SUPABASE_URL!,
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
 });
+```
 
+## Usage
+
+```typescript
 const event = await client.track({
   action_type: 'read',
   resource: 'emails',
