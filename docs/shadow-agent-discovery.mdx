@@ -90,9 +90,9 @@ For each discovered agent:
 ## Running a Shadow Scan
 
 ```bash
-npx @mandatez/sdk shadow-scan \
-  --surface cloud,saas,service-accounts \
-  --window 30d \
+npx @mandatez/cli scan \
+  --owner-id your_owner_id \
+  --github-token $GITHUB_TOKEN \
   --out shadow-agents.json
 ```
 

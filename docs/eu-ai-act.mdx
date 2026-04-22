@@ -195,12 +195,11 @@ The dashboard includes a one-click **revoke** button per agent that rotates the 
 MandateZ produces a one-click EU AI Act compliance bundle scoped to a reporting window:
 
 ```bash
-npx @mandatez/sdk compliance export \
-  --pack eu-ai-act \
-  --articles 9,12,13,14 \
+npx @mandatez/cli report \
+  --type eu-ai-act \
+  --owner-id your_owner_id \
   --from 2026-08-02 \
   --to 2026-12-31 \
-  --format pdf \
   --out eu-ai-act-report.pdf
 ```
 
@@ -240,7 +239,7 @@ Article 12 requires automatic, tamper-evident logs sufficient to reconstruct any
 
 ### Can I generate an EU AI Act compliance report automatically?
 
-Yes. Use `npx @mandatez/sdk compliance export --pack eu-ai-act --articles 9,12,13,14`. The output is a PDF plus JSON bundle mapping each article to the specific MandateZ control applied, with the full event trail and signature chain for the reporting window.
+Yes. Use `npx @mandatez/cli report --type eu-ai-act --owner-id your_owner_id`. The output is a PDF plus JSON bundle mapping each article to the specific MandateZ control applied, with the full event trail and signature chain for the reporting window.
 
 ### What happens if a human does not approve a flagged action in time?
 
@@ -305,7 +304,7 @@ MandateZ's signed event stream is GDPR Article 30 (records of processing) and Ar
       "name": "Can I generate an EU AI Act compliance report automatically?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. Run `npx @mandatez/sdk compliance export --pack eu-ai-act --articles 9,12,13,14`. The output is a PDF plus JSON bundle mapping each article to the specific MandateZ control applied."
+        "text": "Yes. Run `npx @mandatez/cli report --type eu-ai-act --owner-id your_owner_id`. The output is a PDF plus JSON bundle mapping each article to the specific MandateZ control applied."
       }
     },
     {

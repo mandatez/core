@@ -1,0 +1,41 @@
+{
+  "name": "@mandatez/cli",
+  "version": "0.1.0",
+  "description": "CLI for MandateZ — AI agent trust infrastructure",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "mandatez": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mandatez/core"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "cli",
+    "mandatez",
+    "ai-agents",
+    "compliance",
+    "shadow-scan",
+    "owasp"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0"
+  }
+}

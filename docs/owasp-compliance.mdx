@@ -228,11 +228,11 @@ MandateZ produces a tamper-evident OWASP Agentic Top 10 compliance report in one
 - A per-ASI-category mapping with the specific MandateZ control applied
 
 ```bash
-npx @mandatez/sdk compliance export \
-  --pack owasp-agentic \
+npx @mandatez/cli report \
+  --type owasp \
+  --owner-id your_owner_id \
   --from 2026-04-01 \
   --to 2026-04-30 \
-  --format pdf \
   --out owasp-report.pdf
 ```
 
@@ -254,7 +254,7 @@ MandateZ provides a specific, named control for each of the ten categories: leas
 
 ### Can MandateZ generate an OWASP compliance report?
 
-Yes. Run `npx @mandatez/sdk compliance export --pack owasp-agentic` or use the dashboard's one-click export. The output is a tamper-evident PDF plus JSON bundle including the policy configuration, the event trail, and the per-ASI-category control mapping.
+Yes. Run `npx @mandatez/cli report --type owasp --owner-id your_owner_id` or use the dashboard's one-click export. The output is a tamper-evident PDF plus JSON bundle including the policy configuration, the event trail, and the per-ASI-category control mapping.
 
 ### Does MandateZ cover ASI-05 prompt injection if my model is compromised?
 
@@ -303,7 +303,7 @@ Identity (ASI-03), signed trail (ASI-08), and response hashing (ASI-06) are auto
       "name": "Can MandateZ generate an OWASP compliance report?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes. Run `npx @mandatez/sdk compliance export --pack owasp-agentic` or use the dashboard's one-click export. The output is a tamper-evident PDF plus JSON bundle including the policy configuration, the event trail, and the per-ASI-category control mapping."
+        "text": "Yes. Run `npx @mandatez/cli report --type owasp --owner-id your_owner_id` or use the dashboard's one-click export. The output is a tamper-evident PDF plus JSON bundle including the policy configuration, the event trail, and the per-ASI-category control mapping."
       }
     },
     {
