@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
+import { ShadowScanNavLink } from '@/components/shadow-scan-nav-link';
 
 export const metadata: Metadata = {
   title: 'MandateZ Dashboard',
@@ -30,6 +31,7 @@ export default function RootLayout({
               <Link href="/reports" className="hover:text-gray-200 transition-colors">
                 Reports
               </Link>
+              <ShadowScanNavLink />
               <Link href="/pricing" className="hover:text-gray-200 transition-colors">
                 Pricing
               </Link>
