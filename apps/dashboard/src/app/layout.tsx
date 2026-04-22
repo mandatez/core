@@ -44,6 +44,9 @@ export default function RootLayout({
               <Link href="/alerts" className="hover:text-gray-200 transition-colors">
                 Alerts
               </Link>
+              <Link href="/proxy" className="hover:text-gray-200 transition-colors">
+                Proxy Setup
+              </Link>
               <Link href="/pricing" className="hover:text-gray-200 transition-colors">
                 Pricing
               </Link>

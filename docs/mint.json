@@ -33,7 +33,7 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["introduction", "quickstart"]
+      "pages": ["introduction", "quickstart", "proxy-mode"]
     },
     {
       "group": "SDK Reference",
