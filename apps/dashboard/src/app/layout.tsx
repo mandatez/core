@@ -31,6 +31,9 @@ export default function RootLayout({
               <Link href="/" className="hover:text-gray-200 transition-colors">
                 Events
               </Link>
+              <Link href="/analytics" className="hover:text-gray-200 transition-colors">
+                Analytics
+              </Link>
               <Link href="/identity" className="hover:text-gray-200 transition-colors">
                 Identity Checks
               </Link>
@@ -46,6 +49,9 @@ export default function RootLayout({
               </Link>
               <Link href="/proxy" className="hover:text-gray-200 transition-colors">
                 Proxy Setup
+              </Link>
+              <Link href="/keys" className="hover:text-gray-200 transition-colors">
+                API Keys
               </Link>
               <Link href="/pricing" className="hover:text-gray-200 transition-colors">
                 Pricing

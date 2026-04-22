@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
+import { ExportEventsDialog } from '@/components/export-events-dialog';
 
 interface AgentEvent {
   id: string;
@@ -225,6 +226,7 @@ export function EventFeed({ ownerId }: { ownerId?: string } = {}) {
             <> · <span className="text-red-400">{revokedCount} revoked</span></>
           )}
         </span>
+        <ExportEventsDialog />
       </div>
 
       {events.length === 0 ? (

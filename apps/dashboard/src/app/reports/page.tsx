@@ -1,4 +1,5 @@
 import { ReportsClient } from './reports-client';
+import { ExportEventsDialog } from '@/components/export-events-dialog';
 
 export const metadata = {
   title: 'Compliance Reports — MandateZ',
@@ -16,6 +17,11 @@ export default function ReportsPage() {
       </div>
 
       <ReportsClient />
+
+      <div className="flex items-center gap-3 text-sm text-gray-400 border-t border-gray-800 pt-6">
+        <span>Need the underlying data?</span>
+        <ExportEventsDialog variant="link" label="Export raw events as CSV" />
+      </div>
 
       <div className="border-t border-gray-800 pt-6 mt-12">
         <h3 className="text-lg font-medium mb-2">What&apos;s in the report?</h3>
