@@ -32,6 +32,9 @@ export default function RootLayout({
                 Reports
               </Link>
               <ShadowScanNavLink />
+              <Link href="/alerts" className="hover:text-gray-200 transition-colors">
+                Alerts
+              </Link>
               <Link href="/pricing" className="hover:text-gray-200 transition-colors">
                 Pricing
               </Link>
