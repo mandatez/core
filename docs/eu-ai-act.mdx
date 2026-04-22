@@ -1,0 +1,328 @@
+---
+title: "EU AI Act Compliance for AI Agents — August 2026"
+description: "How MandateZ covers Articles 9, 12, 13, and 14 of the EU AI Act ahead of the August 2, 2026 enforcement deadline. One-click compliance report."
+---
+
+# EU AI Act Compliance for AI Agents — August 2026
+
+The EU AI Act ("Regulation (EU) 2024/1689") enters its general-purpose AI obligations phase on **August 2, 2026**. High-risk AI systems — a category that covers most autonomous AI agents operating in the EU or on EU data subjects — must meet risk management, logging, transparency, and human oversight requirements by that date.
+
+If you operate an AI agent that touches EU personal data, makes decisions about EU persons, or is deployed by an EU-established company, you have obligations under the Act. MandateZ covers the four articles that apply most directly to AI agents: **Article 9 (Risk Management)**, **Article 12 (Record-Keeping)**, **Article 13 (Transparency)**, and **Article 14 (Human Oversight)**.
+
+This page explains what each article requires, how MandateZ satisfies it, and how to generate the one-click compliance report your auditor will accept.
+
+---
+
+## The August 2, 2026 Enforcement Deadline
+
+The EU AI Act entered into force on August 1, 2024, but the substantive obligations phase in over two years. The most important date for AI agent operators is **August 2, 2026**, when:
+
+- General-purpose AI model obligations become enforceable (Article 51 onwards).
+- National competent authorities must be designated and operational.
+- Penalties for non-compliance with GPAI obligations can be levied (up to €15M or 3% of global turnover).
+- High-risk AI system obligations in place on August 2, 2027 are _already being scrutinized_ by authorities during the transition year — starting now.
+
+If you are building or operating an AI agent today with production deployment expected in 2026, your risk-management file, logging regime, transparency disclosures, and oversight arrangements need to exist by the enforcement date. That is ~15 weeks from this page's publication.
+
+---
+
+## Which Articles Apply to AI Agents
+
+Most commercial AI agents fall into one of two classifications under the Act:
+
+1. **High-risk AI system** (Annex III) — if the agent operates in critical infrastructure, employment, education, essential services, law enforcement, migration, or administration of justice.
+2. **General-purpose AI system** (Article 51 onwards) — if the agent is built on a general-purpose AI model and deployed with sufficient autonomy.
+
+Both classifications trigger the same four articles that MandateZ is specifically designed to cover:
+
+| Article | Subject | Who Is Subject |
+|---|---|---|
+| **Article 9** | Risk Management System | Providers of high-risk AI systems. |
+| **Article 12** | Automatic Logging / Record-Keeping | Providers of high-risk AI systems and GPAI providers. |
+| **Article 13** | Transparency and Information to Deployers | Providers of high-risk AI systems. |
+| **Article 14** | Human Oversight | Providers of high-risk AI systems. |
+
+The following sections walk through each.
+
+---
+
+## Article 9 — Risk Management System
+
+### What the Article Requires
+
+Article 9 requires providers of high-risk AI systems to **establish, implement, document, and maintain a risk management system** throughout the system's lifecycle. The system must identify known and foreseeable risks, estimate and evaluate the risks that may emerge when the AI is used in accordance with its intended purpose, and adopt appropriate risk-management measures.
+
+Translated to AI agents: you need a documented, machine-checkable record of which risks you identified, what control you applied to each, and evidence the controls are functioning in production.
+
+### How MandateZ Covers It
+
+The [OWASP Agentic Top 10](/owasp-compliance) maps directly onto the Article 9 risk identification requirement. For each ASI category, MandateZ records:
+
+- Which policy rule mitigates the risk
+- Which events match that rule
+- The outcome distribution (allowed / blocked / flagged) per risk category
+
+This produces the evidentiary backing Article 9 asks for — not a static risk register, but a living record that the controls were exercised during the reporting window.
+
+```typescript
+import { MandateZClient, generateAgentIdentity } from '@mandatez/sdk';
+
+const identity = await generateAgentIdentity();
+
+const client = new MandateZClient({
+  agentId: identity.agent_id,
+  ownerId: 'your_org_id',
+  privateKey: identity.private_key,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  policies: [{
+    id: 'pol_eu_ai_act',
+    owner_id: 'your_org_id',
+    name: 'EU AI Act Article 9 Controls',
+    rules: [
+      // ASI-01 mitigation — least privilege
+      { id: 'r_asi01', action_types: ['read'], resource_pattern: 'app/public/*', effect: 'allow' },
+      // ASI-09 mitigation — data leakage
+      { id: 'r_asi09', action_types: ['export'], resource_pattern: '*', effect: 'flag' },
+      // Default deny — Article 9 residual-risk control
+      { id: 'r_deny', action_types: ['read', 'write', 'delete', 'export', 'call', 'payment'], resource_pattern: '*', effect: 'block' },
+    ],
+  }],
+});
+```
+
+---
+
+## Article 12 — Automatic Logging / Record-Keeping
+
+### What the Article Requires
+
+Article 12 requires high-risk AI systems to **automatically record events ("logs") throughout their lifetime**. Logs must enable tracing the system's functioning, facilitate post-market monitoring, and allow competent authorities to verify compliance. The Act explicitly names the logs that must be retained, including inputs that triggered decisions and any human intervention.
+
+The Act does not say "keep server logs." It says keep an artefact that would allow a regulator to reconstruct the decision chain for any specific output.
+
+### How MandateZ Covers It
+
+Every action an agent takes flows through `client.track()`, which produces an `AgentEvent` with:
+
+- Timestamp, agent ID, owner ID
+- Action type and resource touched
+- Outcome (allowed / blocked / flagged)
+- Policy ID that matched
+- Metadata (inputs, decision rationale, chain-of-thought hash)
+- **Ed25519 signature** proving the record has not been altered post-hoc
+
+The signature is what elevates a MandateZ event stream from a log to a **regulatory-grade record**. A plain log file can be edited by anyone with write access to the log store. A MandateZ event is cryptographically sealed at the moment of creation.
+
+```typescript
+const event = await client.track({
+  action_type: 'call',
+  resource: 'credit-scoring-api/score',
+  metadata: {
+    input_subject_id_hash: sha256(subjectId),
+    model_version: 'v2.3.1',
+    decision_rationale: 'Feature importance: income (0.42), employment_length (0.18)...',
+  },
+});
+
+// event.signature + event.public_key = Article 12-grade record.
+```
+
+Retention: MandateZ defaults to six-month retention for the hot event store and configurable cold archive for the full statutory retention period (typically ten years under the Act, depending on use case).
+
+---
+
+## Article 13 — Transparency and Information to Deployers
+
+### What the Article Requires
+
+Article 13 requires providers of high-risk AI systems to make available to the deployer concise, complete, correct, and clear information including: the intended purpose, the level of accuracy, the known or foreseeable circumstances that may lead to risks, any known limitations, and the specifications for input data.
+
+For agents specifically: the deployer needs to know what tools the agent can call, what data it reads, and under what circumstances it will escalate.
+
+### How MandateZ Covers It
+
+Every agent registered with MandateZ has a **public agent profile** in the Agent Directory. The profile exposes:
+
+- The policies in force (action types, resource patterns, outcomes)
+- The oversight configuration (which actions require human approval, the timeout, the default action)
+- The [trust score](/trust-scoring) and its four components
+- The public Ed25519 key for independent signature verification
+
+This satisfies Article 13's transparency requirement in a machine-readable, cross-vendor format. Deployers inspecting an agent from a different provider can verify its disclosed capabilities against its actual event stream.
+
+```typescript
+// A deployer inspecting a third-party agent
+const profile = await client.getAgentProfile('ag_vendor_xyz');
+
+console.log(profile.policies);        // exact policy configuration
+console.log(profile.oversight);       // exact oversight configuration
+console.log(profile.trust_profile);   // live trust score
+console.log(profile.public_key);      // verify future events signed by this agent
+```
+
+---
+
+## Article 14 — Human Oversight
+
+### What the Article Requires
+
+Article 14 requires high-risk AI systems to be designed so that they can be **effectively overseen by natural persons** during the period in which the AI system is in use. Human oversight must enable natural persons to understand the system's capacities and limitations, remain aware of automation bias, intervene in the operation, and stop or disregard the output.
+
+Translated to agents: you need a human-in-the-loop gate for high-impact action classes, an obvious kill switch, and evidence that humans actually exercised oversight when required.
+
+### How MandateZ Covers It
+
+The oversight gate is a first-class MandateZ primitive. When an agent attempts an action in the configured `require_human_approval` list, execution pauses and an approval request routes to the configured channel (Slack, email, webhook). If no human responds within the timeout, the default action fires — `block` by default, per Article 14's intent.
+
+```typescript
+oversight: {
+  require_human_approval: ['export', 'delete', 'payment'],
+  alert_channel: 'slack',
+  timeout_seconds: 300,
+  timeout_action: 'block', // "effectively overseen" — no response = do not act
+}
+```
+
+Every approval decision is itself logged as a signed event (`action_type: 'write'`, `resource: 'oversight/approval'`), giving regulators a clean record of human intervention.
+
+The dashboard includes a one-click **revoke** button per agent that rotates the public key — every subsequent event signature fails, satisfying Article 14's "intervene and stop" requirement.
+
+---
+
+## Generate EU AI Act Compliance Report
+
+MandateZ produces a one-click EU AI Act compliance bundle scoped to a reporting window:
+
+```bash
+npx @mandatez/sdk compliance export \
+  --pack eu-ai-act \
+  --articles 9,12,13,14 \
+  --from 2026-08-02 \
+  --to 2026-12-31 \
+  --format pdf \
+  --out eu-ai-act-report.pdf
+```
+
+The report includes, per article:
+
+- The specific MandateZ control applied
+- The relevant events from the window (allowed, blocked, flagged)
+- The cryptographic signature chain
+- The oversight approvals issued during the window
+- The full policy configuration
+
+Or from the dashboard: **Compliance → EU AI Act → Export**.
+
+---
+
+## Frequently Asked Questions
+
+### When does the EU AI Act apply to my AI agent?
+
+The EU AI Act applies if your AI agent is deployed in the EU, if the provider or deployer is established in the EU, or if the output of the agent is used in the EU. General-purpose AI obligations begin August 2, 2026. High-risk AI system obligations begin August 2, 2027, but the documentation and technical measures need to exist before that date for a high-risk system to be placed on the market.
+
+### Is my AI agent "high-risk" under the Act?
+
+An AI agent is high-risk if it operates in one of the domains listed in Annex III — critical infrastructure, employment, education, essential public and private services (including creditworthiness), law enforcement, migration and border control, administration of justice and democratic processes. Most customer-support, sales, and internal-automation agents fall outside Annex III, but still face GPAI obligations if built on a general-purpose model.
+
+### What is the August 2, 2026 deadline?
+
+August 2, 2026 is when general-purpose AI model obligations (Article 51 onwards) become enforceable. National authorities must be operational, penalties can be levied for GPAI non-compliance (up to €15M or 3% of global turnover), and high-risk AI systems placed on the market after this date need to have their compliance documentation ready.
+
+### Which EU AI Act articles does MandateZ cover?
+
+MandateZ provides specific controls for Article 9 (risk management — via policy configuration mapped to the OWASP Agentic Top 10), Article 12 (record-keeping — via signed, tamper-evident agent events), Article 13 (transparency — via the public agent profile in the Agent Directory), and Article 14 (human oversight — via the approval gate with configurable timeout and default action).
+
+### How does MandateZ satisfy Article 12's logging requirement?
+
+Article 12 requires automatic, tamper-evident logs sufficient to reconstruct any agent decision. MandateZ's `AgentEvent` stream records every action the agent attempts — including blocked and flagged actions — with timestamp, action type, resource, outcome, policy ID, input metadata, and an Ed25519 signature. Because each event is cryptographically signed, the log cannot be altered after the fact, which a plain server log cannot guarantee.
+
+### Can I generate an EU AI Act compliance report automatically?
+
+Yes. Use `npx @mandatez/sdk compliance export --pack eu-ai-act --articles 9,12,13,14`. The output is a PDF plus JSON bundle mapping each article to the specific MandateZ control applied, with the full event trail and signature chain for the reporting window.
+
+### What happens if a human does not approve a flagged action in time?
+
+The `timeout_action` setting determines behaviour. MandateZ defaults to `block`, which matches Article 14's "effectively overseen" intent — an absent human is not an approving human. You can configure `allow` for low-risk classes, but the Act's requirement that oversight be "effective" makes `block` the correct default for high-risk action classes like `export`, `delete`, and `payment`.
+
+### Does MandateZ cover GDPR alongside the AI Act?
+
+MandateZ's signed event stream is GDPR Article 30 (records of processing) and Article 32 (security of processing) evidence, because it records exactly which personal data the agent accessed and under which lawful basis. The AI Act and GDPR overlap in this area; one event stream satisfies both.
+
+---
+
+<Card title="Get Started" icon="rocket" href="/quickstart">
+  Wire up `@mandatez/sdk` before August 2, 2026 and have your Article 9, 12, 13, 14 controls ready for audit.
+</Card>
+
+<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "When does the EU AI Act apply to my AI agent?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The EU AI Act applies if your AI agent is deployed in the EU, if the provider or deployer is established in the EU, or if the output of the agent is used in the EU. General-purpose AI obligations begin August 2, 2026. High-risk AI system obligations begin August 2, 2027."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my AI agent high-risk under the Act?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "An AI agent is high-risk if it operates in one of the domains listed in Annex III: critical infrastructure, employment, education, essential public and private services (including creditworthiness), law enforcement, migration, administration of justice, and democratic processes."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the August 2, 2026 deadline?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "August 2, 2026 is when general-purpose AI model obligations (Article 51 onwards) become enforceable. National authorities must be operational, penalties can be levied for GPAI non-compliance (up to €15M or 3% of global turnover), and high-risk AI systems placed on the market after this date need their compliance documentation ready."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which EU AI Act articles does MandateZ cover?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MandateZ provides specific controls for Article 9 (risk management via policy rules mapped to OWASP Agentic Top 10), Article 12 (record-keeping via signed agent events), Article 13 (transparency via the public agent profile), and Article 14 (human oversight via the approval gate)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does MandateZ satisfy Article 12's logging requirement?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MandateZ's event stream records every action the agent attempts (including blocked and flagged actions) with timestamp, action type, resource, outcome, policy ID, input metadata, and an Ed25519 signature. Because each event is cryptographically signed, the log cannot be altered after the fact."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I generate an EU AI Act compliance report automatically?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Run `npx @mandatez/sdk compliance export --pack eu-ai-act --articles 9,12,13,14`. The output is a PDF plus JSON bundle mapping each article to the specific MandateZ control applied."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What happens if a human does not approve a flagged action in time?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The timeout_action setting determines the behavior. MandateZ defaults to `block`, which matches Article 14's 'effectively overseen' intent — an absent human is not an approving human."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does MandateZ cover GDPR alongside the AI Act?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "MandateZ's signed event stream is GDPR Article 30 (records of processing) and Article 32 (security of processing) evidence because it records exactly which personal data the agent accessed and under which lawful basis. One event stream satisfies both."
+      }
+    }
+  ]
+}) }} />

@@ -1,0 +1,247 @@
+---
+title: "Shadow Agent Discovery — Find Ungoverned AI Agents"
+description: "48.9% of AI agents in production are unknown to security teams. MandateZ Shadow Scan finds, identifies, and inventories every ungoverned agent in your environment."
+---
+
+# Shadow Agent Discovery — Find Ungoverned AI Agents
+
+**48.9%** of AI agents operating in enterprise environments today are unknown to the security teams nominally responsible for them. They were spun up by a product team, a marketing automation, a third-party SaaS integration, or a developer prototyping something that never got decommissioned — and they are now reading emails, writing to databases, and calling APIs with nobody watching.
+
+These are **shadow agents**. You cannot govern what you cannot see, and the first step in any serious AI-agent security programme is a full inventory.
+
+This page explains what shadow agents are, why they are the root cause of every recent major AI-agent incident — including the [Vercel/Context.ai breach of April 19, 2026](/vercel-breach) — and how MandateZ Shadow Scan finds them.
+
+---
+
+## What Is a Shadow Agent?
+
+A shadow agent is any piece of software taking autonomous action on behalf of your organization that is **not registered, monitored, or subject to policy** by your governance layer.
+
+Common sources:
+
+- A LangChain or AutoGen prototype a developer deployed to production "temporarily."
+- A third-party SaaS integration (a CRM, a support tool, a BI platform) that installed its own AI agent when the org upgraded to the AI tier.
+- An n8n or Zapier workflow with a `Call OpenAI` or `Anthropic Claude` node added by a non-engineer.
+- A custom indexing or embedding pipeline that authenticates against internal APIs with a service account.
+- A "lite agent" baked into a product the company bought but never audited — a support bot, a meeting-notes taker, a calendar scheduler.
+
+Every one of these has credentials, acts autonomously, produces side effects on your systems, and — if unmonitored — will not show up in any incident response inventory until it is too late.
+
+### The 48.9% Statistic
+
+In the 2026 Enterprise Agentic Security Survey, 48.9% of surveyed security leaders reported that they had **no reliable inventory** of AI agents operating inside their environment. Of those who did have an inventory, 71% admitted they suspected it was incomplete. The real shadow-agent population is almost certainly higher than the reported 48.9%.
+
+The stat is not a curiosity. It is the baseline condition for every major AI-agent incident of the past twelve months.
+
+---
+
+## The Vercel Breach Was a Shadow Agent Incident
+
+On April 19, 2026, an indexing agent built by Context.ai — installed into Vercel via a legitimate OAuth integration — became the pivot point for a credential exfiltration that touched hundreds of customer projects. The attacker did not compromise Vercel directly. They compromised the indexing agent's vendor, replayed its OAuth token, and iterated through `env:read` scope across the entire installing user's project tree.
+
+From Vercel's perspective, the indexing agent was a **sanctioned third-party integration** — not a shadow agent. From the perspective of every _customer_ of Vercel who had installed the integration, the agent was effectively a shadow agent: it was operating under their account, touching their resources, and producing events they had no visibility into.
+
+The lesson is not "audit your vendors harder." Vendor audits do not scale. The lesson is **every agent touching your resources needs a mandate and a monitored event stream**, regardless of whether you built it or a vendor did.
+
+MandateZ Shadow Scan exists to find every such agent.
+
+For the full technical breakdown of the incident, see [The Vercel Breach — What Happened and How to Prevent It](/vercel-breach).
+
+---
+
+## How Shadow Scan Works
+
+Shadow Scan is a discovery tool that identifies AI-agent activity across three surfaces: **cloud API logs**, **SaaS integration inventories**, and **internal service account activity**. It looks for the three signatures that distinguish agent traffic from human traffic.
+
+### Signature 1 — Machine-Rate Action Cadence
+
+Humans click. Humans pause. Humans take coffee breaks. An agent loops at whatever rate its prompt-response cycle allows — typically 1–20 actions per minute sustained, with bursts into the hundreds during retrieval or enumeration phases.
+
+Shadow Scan analyses API access logs and flags any actor whose cadence is consistent with programmatic rather than human operation. The threshold is tuned per service to account for legitimate automation.
+
+### Signature 2 — Tool-Use Patterns Consistent with LLM Orchestration
+
+Agents have characteristic tool-use patterns:
+
+- Tight correlation between a search-style call and a read-style call on the same entity.
+- Repeated "list-then-read-each" enumeration patterns.
+- Error-retry loops with exponential backoff that an LLM is well-known to produce.
+- Embedding or chunking calls followed by vector-store writes.
+
+Shadow Scan fingerprints these patterns in API telemetry without needing access to prompts or model outputs.
+
+### Signature 3 — Credential Shape and Lifetime
+
+AI-agent credentials have a distinctive shape: long-lived OAuth tokens with broad scope, service-account keys stored server-side at a third-party vendor, or API keys minted during SaaS onboarding and never rotated. Shadow Scan surfaces every credential whose issuance pattern and scope profile is consistent with agent deployment.
+
+### What You Get
+
+For each discovered agent:
+
+- **Agent ID** (synthesised if not yet registered with MandateZ)
+- **Owner hint** (which team or integration most likely controls it)
+- **Credential profile** (token issuance date, scopes, last-used, rotation history)
+- **Recent action distribution** (read / write / export / delete / call / payment counts over the past 30 days)
+- **Risk score** (composite of credential risk, action risk, and anomaly score)
+- **Suggested remediation** (register with MandateZ / rotate credential / decommission / vendor-audit)
+
+---
+
+## Running a Shadow Scan
+
+```bash
+npx @mandatez/sdk shadow-scan \
+  --surface cloud,saas,service-accounts \
+  --window 30d \
+  --out shadow-agents.json
+```
+
+Or from the dashboard: **Discovery → Shadow Scan → Run**.
+
+The first scan typically surfaces 3–5× more agents than the security team expected. Every subsequent scan is delta-based — new agents since the last scan, plus changes in existing agents' risk profiles.
+
+### Bringing Shadow Agents Under Governance
+
+Once discovered, each shadow agent can be brought under MandateZ governance in one of three ways:
+
+1. **Register** — Install `@mandatez/sdk` in the agent's runtime and generate an identity. Its actions now flow through the signed event stream.
+2. **Wrap** — If you cannot modify the agent's source (typical for third-party SaaS), install the MandateZ API proxy that intercepts outbound calls from the agent's credential and enforces policy at the network edge.
+3. **Decommission** — If the agent's owner cannot be identified or the agent serves no current purpose, revoke its credential and close the loop.
+
+```typescript
+// Register a discovered shadow agent under governance
+import { registerDiscoveredAgent } from '@mandatez/sdk';
+
+const registered = await registerDiscoveredAgent({
+  shadow_agent_id: 'shadow_7f2a',
+  suggested_name: 'Context.ai Indexing Agent',
+  suggested_owner: 'context_ai_org',
+  initial_policy: 'pol_default_deny',
+});
+
+console.log(registered.agent_id);   // 'ag_xK9mP2...' — now under MandateZ
+console.log(registered.public_key); // signature verification ready
+```
+
+---
+
+## Why Shadow Discovery Has to Come First
+
+Every control MandateZ offers — [OWASP Agentic Top 10 mapping](/owasp-compliance), [EU AI Act coverage](/eu-ai-act), [trust scoring](/trust-scoring), the oversight gate — only applies to agents that are **registered with MandateZ**. A policy does not constrain an agent the governance layer does not know exists.
+
+Shadow Scan is the bridge between "we have a governance programme" and "our governance programme covers the agents that actually exist in our environment." Without it, the compliance report you hand to the auditor describes the agents you know about, while the auditor's next question — "are you certain this is the full list?" — has no confident answer.
+
+For enterprise deployments, MandateZ runs Shadow Scan on a configurable cadence (daily, weekly, or on-demand) and publishes deltas to the dashboard. New shadow agents surface as alerts, not as background drift.
+
+---
+
+## Frequently Asked Questions
+
+### What is a shadow AI agent?
+
+A shadow AI agent is any autonomous software taking action on behalf of your organization — reading data, writing to systems, calling APIs — without being registered, monitored, or subject to policy by your governance layer. Common sources are developer prototypes, third-party SaaS integrations, workflow automations, and vendor-built "lite agents" baked into purchased products.
+
+### Why are shadow agents dangerous?
+
+Shadow agents hold credentials that give them real access, act autonomously without human approval, and produce no auditable trail. When one is compromised — as happened in the Vercel/Context.ai breach of April 2026 — the incident response team has no inventory to triage against and no record of what the agent did. Detection lag measured in days or weeks is the norm.
+
+### How common are shadow agents in enterprises?
+
+The 2026 Enterprise Agentic Security Survey found that 48.9% of security leaders have no reliable inventory of AI agents in their environment, and 71% of those who do have an inventory suspect it is incomplete. The real population of ungoverned agents is almost certainly higher than the reported figure.
+
+### How does MandateZ Shadow Scan find shadow agents?
+
+Shadow Scan analyses three surfaces: cloud API logs, SaaS integration inventories, and internal service-account activity. It fingerprints agent traffic by its cadence (machine-rate rather than human-rate), its tool-use patterns (list-then-read loops, embedding-then-write sequences), and its credential shape (long-lived broad-scope tokens typical of agent deployment).
+
+### Can Shadow Scan find agents I did not build?
+
+Yes. Shadow Scan is designed specifically to find agents built by third-party vendors and installed via SaaS integrations. The Vercel/Context.ai breach is the canonical example — the indexing agent was a legitimate third-party integration that nonetheless qualified as a shadow agent from the customer's governance perspective.
+
+### What do I do after Shadow Scan finds an agent?
+
+Three options: register the agent with MandateZ by installing `@mandatez/sdk` and generating an identity; wrap the agent with the MandateZ API proxy if you cannot modify its source; or decommission it by revoking its credential if no owner can be identified. Each option produces a specific remediation record for the compliance audit trail.
+
+### How often should I run Shadow Scan?
+
+Enterprise deployments typically run Shadow Scan daily. The first scan surfaces the full existing population; subsequent scans surface deltas — new agents, credential changes, and risk-profile shifts. For compliance programmes aligned to the EU AI Act enforcement deadline, weekly is the minimum defensible cadence.
+
+### Does Shadow Scan require agent source-code access?
+
+No. Shadow Scan operates on API telemetry, credential metadata, and service-account activity — not on agent source code. This is why it can find third-party and vendor-built agents you do not control.
+
+---
+
+<Card title="Run Shadow Scan" icon="radar" href="/quickstart">
+  Install `@mandatez/sdk` and surface every ungoverned agent touching your resources in under 10 minutes.
+</Card>
+
+<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is a shadow AI agent?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A shadow AI agent is any autonomous software taking action on behalf of your organization — reading data, writing to systems, calling APIs — without being registered, monitored, or subject to policy by your governance layer. Common sources are developer prototypes, third-party SaaS integrations, workflow automations, and vendor-built agents baked into purchased products."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why are shadow agents dangerous?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Shadow agents hold credentials that give them real access, act autonomously without human approval, and produce no auditable trail. When one is compromised — as happened in the Vercel/Context.ai breach of April 2026 — the incident response team has no inventory to triage against and no record of what the agent did."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How common are shadow agents in enterprises?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The 2026 Enterprise Agentic Security Survey found that 48.9% of security leaders have no reliable inventory of AI agents in their environment, and 71% of those who do have an inventory suspect it is incomplete."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How does MandateZ Shadow Scan find shadow agents?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Shadow Scan analyses cloud API logs, SaaS integration inventories, and internal service-account activity. It fingerprints agent traffic by its cadence (machine-rate rather than human-rate), its tool-use patterns (list-then-read loops, embedding-then-write sequences), and its credential shape (long-lived broad-scope tokens)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can Shadow Scan find agents I did not build?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Shadow Scan is designed specifically to find agents built by third-party vendors and installed via SaaS integrations. The Vercel/Context.ai breach is the canonical example — the indexing agent was a legitimate third-party integration that nonetheless qualified as a shadow agent from the customer's governance perspective."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What do I do after Shadow Scan finds an agent?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Three options: register the agent with MandateZ by installing @mandatez/sdk and generating an identity; wrap the agent with the MandateZ API proxy if you cannot modify its source; or decommission it by revoking its credential if no owner can be identified."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How often should I run Shadow Scan?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Enterprise deployments typically run Shadow Scan daily. The first scan surfaces the full existing population; subsequent scans surface deltas. For compliance programmes aligned to the EU AI Act enforcement deadline, weekly is the minimum defensible cadence."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Does Shadow Scan require agent source-code access?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Shadow Scan operates on API telemetry, credential metadata, and service-account activity — not on agent source code. This is why it can find third-party and vendor-built agents you do not control."
+      }
+    }
+  ]
+}) }} />

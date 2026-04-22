@@ -44,6 +44,15 @@
       "pages": ["trust-scoring"]
     },
     {
+      "group": "Security Intelligence",
+      "pages": [
+        "vercel-breach",
+        "shadow-agent-discovery",
+        "owasp-compliance",
+        "eu-ai-act"
+      ]
+    },
+    {
       "group": "Case Studies",
       "pages": ["vercel-breach-analysis"]
     },
