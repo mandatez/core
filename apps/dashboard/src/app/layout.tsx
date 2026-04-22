@@ -22,6 +22,12 @@ export default function RootLayout({
               Mandate<span className="text-blue-400">Z</span>
             </Link>
             <div className="flex gap-6 text-sm text-gray-400">
+              <Link
+                href="/onboarding"
+                className="text-blue-300 hover:text-blue-200 font-medium transition-colors"
+              >
+                Get Started
+              </Link>
               <Link href="/" className="hover:text-gray-200 transition-colors">
                 Events
               </Link>

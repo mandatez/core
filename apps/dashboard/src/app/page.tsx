@@ -1,8 +1,10 @@
 import { EventFeed } from '@/components/event-feed';
+import { GetStartedBanner } from '@/components/get-started-banner';
 
 export default function DashboardPage() {
   return (
     <div className="space-y-8">
+      <GetStartedBanner />
       <div>
         <h2 className="text-2xl font-semibold">Agent Events</h2>
         <p className="text-gray-400 mt-1">
