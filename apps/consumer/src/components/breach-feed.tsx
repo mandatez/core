@@ -27,58 +27,36 @@ interface HNHit {
 const HARDCODED_INCIDENTS: Incident[] = [
   {
     title:
-      "Vercel breached via Context.ai — 'Allow All' OAuth grant pivots into infrastructure",
+      "Vercel breached via Context.ai — employee's 'Allow All' OAuth grant enables infrastructure pivot",
     date: 'Apr 19, 2026',
     severity: 'critical',
-    source: 'BleepingComputer',
+    source: 'Vercel Security Bulletin',
     owasp: 'ASI-02, ASI-03',
     prevention:
-      "MandateZ policy engine blocks 'Allow All' OAuth grants before execution. Ed25519 identity binding prevents credential pivot.",
-    url: 'https://www.bleepingcomputer.com/news/security/vercel-confirms-breach-as-hackers-claim-to-be-selling-stolen-data/',
+      "MandateZ policy engine blocks 'Allow All' OAuth grants before execution. Ed25519 identity cannot be stolen — unlike OAuth tokens.",
+    url: 'https://vercel.com/kb/bulletin/vercel-april-2026-security-incident',
     pinned: true,
   },
   {
     title:
-      'Russian hacker uses Claude AI to compromise 600+ firewall devices across 55 countries',
+      'Russian threat actor uses Claude AI to compromise 600+ firewall devices across 55 countries',
     date: 'Jan 2026',
     severity: 'critical',
-    source: 'AWS Security',
+    source: 'AWS Security / Gambit Security',
     owasp: 'ASI-02, ASI-08',
     prevention:
-      'MandateZ blocks agent actions outside declared policy scope. Every action is cryptographically signed — non-repudiable by design.',
+      'MandateZ policy engine blocks actions outside declared mandate scope. Every event is Ed25519 signed — cryptographically non-repudiable.',
     url: '#',
   },
   {
     title:
-      '48.9% of enterprises blind to their own AI agent traffic — Salt Security H1 2026 Report',
+      '48.9% of enterprises have zero visibility into their own AI agent traffic — Salt Security H1 2026',
     date: 'Apr 2026',
     severity: 'high',
-    source: 'Salt Security',
+    source: 'Salt Security State of AI & API Security Report',
     owasp: 'ASI-03, ASI-09',
     prevention:
-      'MandateZ Shadow Agent Discovery finds unregistered agents. Every agent gets a cryptographic identity on registration.',
-    url: '#',
-  },
-  {
-    title:
-      "AI agent 'confused deputy' attack compromises OAuth token in enterprise deployment",
-    date: 'Mar 2026',
-    severity: 'high',
-    source: 'OWASP Agentic Top 10',
-    owasp: 'ASI-03',
-    prevention:
-      'MandateZ policy engine enforces least-privilege at runtime. No agent can exceed its declared mandate.',
-    url: '#',
-  },
-  {
-    title:
-      'Agent memory poisoning attack forces LLM to exfiltrate customer data',
-    date: 'Feb 2026',
-    severity: 'medium',
-    source: 'OWASP Agentic Top 10',
-    owasp: 'ASI-01',
-    prevention:
-      'MandateZ audit trail logs every read/export action with tamper-evident Ed25519 signatures.',
+      'MandateZ Shadow Agent Discovery finds unregistered agents. Every registered agent gets a cryptographic identity — visible, auditable, governed.',
     url: '#',
   },
 ];
