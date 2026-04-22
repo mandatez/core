@@ -30,6 +30,25 @@ export default function SchedulesPage() {
           <li>Every event is Ed25519-signed — tamper-evident by design</li>
         </ul>
       </div>
+
+      <div className="border border-amber-900/40 bg-amber-950/20 rounded-lg p-4 text-sm text-amber-200/90">
+        <div className="font-medium text-amber-100 mb-1">Delivery requires Resend</div>
+        <p className="text-amber-200/80">
+          Reports are sent via{' '}
+          <a
+            href="https://resend.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-amber-100"
+          >
+            Resend
+          </a>
+          . Make sure to add <code className="font-mono bg-amber-950/60 px-1 py-0.5 rounded">RESEND_API_KEY</code> to
+          your environment variables — free tier is 3,000 emails/month and works with any domain
+          internationally. Until a verified sender is configured, reports arrive from
+          <code className="font-mono bg-amber-950/60 px-1 py-0.5 rounded ml-1">onboarding@resend.dev</code>.
+        </p>
+      </div>
     </div>
   );
 }

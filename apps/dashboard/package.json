@@ -10,15 +10,19 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@mandatez/sdk": "workspace:*",
     "@supabase/supabase-js": "^2.99.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
+    "libsodium-wrappers": "^0.8.2",
     "next": "^15.5.14",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "resend": "^6.12.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "@types/libsodium-wrappers": "^0.8.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "tailwindcss": "^4.2.2",
