@@ -16,6 +16,32 @@ export class SupabaseTransport {
   }
 
   /**
+   * Upserts an agent row. Idempotent — safe to call on every client startup.
+   */
+  async upsertAgent(params: {
+    agentId: string;
+    ownerId: string;
+    name: string;
+    publicKey: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    const { error } = await this.client.from('agents').upsert(
+      {
+        id: params.agentId,
+        owner_id: params.ownerId,
+        name: params.name,
+        public_key: params.publicKey,
+        metadata: params.metadata ?? {},
+      },
+      { onConflict: 'id' },
+    );
+
+    if (error) {
+      throw new Error(`Failed to upsert agent: ${error.message}`);
+    }
+  }
+
+  /**
    * Inserts a signed AgentEvent into the agent_events table.
    * Throws on Supabase errors so callers can handle failures.
    */

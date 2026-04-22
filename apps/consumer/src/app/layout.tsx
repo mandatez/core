@@ -10,8 +10,34 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://core-consumer.vercel.app'),
   title: 'MandateZ — Control Your AI',
   description: 'See what your AI assistants do and set the rules for what they can access',
+  openGraph: {
+    title: 'MandateZ — Every agent needs a mandate',
+    description:
+      'The neutral, cross-vendor trust infrastructure layer for AI agents. Read the State of AI Agent Governance 2026 report.',
+    url: 'https://core-consumer.vercel.app',
+    siteName: 'MandateZ',
+    type: 'website',
+    images: [
+      {
+        url: 'https://core-dashboard-black.vercel.app/api/trust-card/ag_ctx_ai_prod',
+        width: 1200,
+        height: 630,
+        alt: 'MandateZ — State of AI Agent Governance 2026',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MandateZ — Every agent needs a mandate',
+    description:
+      'State of AI Agent Governance 2026 — MandateZ original research on the governance gap.',
+    images: [
+      'https://core-dashboard-black.vercel.app/api/trust-card/ag_ctx_ai_prod',
+    ],
+  },
 };
 
 export default function RootLayout({

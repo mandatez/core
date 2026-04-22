@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Syne, JetBrains_Mono, Inter } from 'next/font/google';
 import BreachFeed from '@/components/breach-feed';
+import { REPORT_2026 } from '@/data/governance-report-2026';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -37,6 +38,7 @@ export default function LandingPage() {
       <ComplianceSection />
       <WorksWithSection />
       <PricingSection />
+      <ReportTeaserSection />
       <FooterSection />
     </div>
   );
@@ -919,6 +921,135 @@ function PricingSection() {
           >
             Generate a report <span>→</span>
           </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =======================================================================
+   SECTION 8.5 — STATE OF AI AGENT GOVERNANCE 2026 (REPORT TEASER)
+   ======================================================================= */
+
+function ReportTeaserSection() {
+  const teaserStats = [
+    REPORT_2026.key_stats[0], // 48.9%
+    REPORT_2026.key_stats[2], // 40%+
+    REPORT_2026.key_stats[3], // 9 days
+  ];
+
+  return (
+    <section className="relative overflow-hidden border-t border-white/[0.05] py-28 md:py-36">
+      <div
+        aria-hidden
+        className="absolute -top-24 left-1/2 -z-10 h-[40vh] w-[80vw] -translate-x-1/2 rounded-full opacity-40 blur-[140px]"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(37,99,235,0.35) 0%, rgba(37,99,235,0) 70%)',
+        }}
+      />
+
+      <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
+        <SectionLabel index="8.5" label="Original Research" accent="blue" />
+
+        <div className="mt-6 grid gap-10 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+          <div>
+            <h2
+              className={`${syne.className} max-w-3xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[64px]`}
+            >
+              State of AI Agent
+              <br />
+              Governance 2026<span className="text-blue-500">.</span>
+            </h2>
+            <p className="mt-6 max-w-2xl text-[16px] leading-relaxed text-white/55 md:text-[17px]">
+              <span className="text-white">
+                MandateZ original research on the governance gap.
+              </span>{' '}
+              {REPORT_2026.subtitle}.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start gap-3 lg:items-end">
+            <span
+              className={`${mono.className} text-[10px] uppercase tracking-[0.28em] text-white/35`}
+            >
+              Published · {REPORT_2026.published}
+            </span>
+            <span
+              className={`${mono.className} text-[10px] uppercase tracking-[0.28em] text-white/35`}
+            >
+              By · {REPORT_2026.author}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-16 grid gap-5 md:grid-cols-3">
+          {teaserStats.map((s, i) => (
+            <div
+              key={i}
+              className="group relative flex flex-col border border-white/[0.08] bg-white/[0.015] p-8 transition-all hover:border-white/25 hover:bg-white/[0.035]"
+            >
+              <div className="absolute left-0 top-0 h-px w-0 bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500 group-hover:w-full" />
+              <div
+                className={`${mono.className} text-[10px] uppercase tracking-[0.3em] text-white/30`}
+              >
+                {String(i + 1).padStart(2, '0')}
+              </div>
+              <div
+                className={`${syne.className} mt-6 font-extrabold tracking-[-0.03em] text-white`}
+                style={{
+                  fontSize: 'clamp(2.75rem, 6vw, 4rem)',
+                  lineHeight: '1',
+                }}
+              >
+                {s.stat}
+              </div>
+              <p className="mt-5 text-[14.5px] leading-[1.55] text-white/65">
+                {s.label}
+              </p>
+              <div
+                className={`${mono.className} mt-6 border-t border-white/[0.06] pt-4 text-[10px] uppercase tracking-[0.22em] text-blue-300/90`}
+              >
+                Source · {s.source}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex flex-wrap items-center gap-4 border-t border-white/[0.05] pt-8">
+          <Link
+            href="/report"
+            className={`${inter.className} group inline-flex items-center gap-2 bg-[#2563EB] px-7 py-3.5 text-[13px] font-medium tracking-wide text-white transition-all hover:bg-[#1d4ed8] hover:shadow-[0_0_40px_rgba(37,99,235,0.45)]`}
+          >
+            Read the full report
+            <span className="transition-transform group-hover:translate-x-0.5">
+              →
+            </span>
+          </Link>
+          <Link
+            href="/report?print=true"
+            className="inline-flex items-center gap-2 border border-white/15 bg-white/[0.02] px-7 py-3.5 text-[13px] font-medium tracking-wide text-white/80 transition-all hover:border-white/40 hover:text-white"
+          >
+            Download PDF
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
+          </Link>
+          <span
+            className={`${mono.className} ml-auto text-[10px] uppercase tracking-[0.25em] text-white/35`}
+          >
+            6 stats · 5 findings · 5 recommendations
+          </span>
         </div>
       </div>
     </section>

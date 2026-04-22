@@ -4,6 +4,28 @@
 
 MandateZ is the open, cross-vendor trust infrastructure for AI agents. Cryptographic identity, policy enforcement, human oversight, and tamper-proof audit logs — for any agent framework.
 
+## Quickstart (30 seconds)
+
+```bash
+npm install @mandatez/sdk
+```
+
+```typescript
+import { MandateZAgent } from '@mandatez/sdk';
+
+const myAgent = MandateZAgent(yourAgentFunction, {
+  agentId: 'ag_...',
+  ownerId: 'your_owner_id',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+});
+
+// Your agent is now governed. That's it.
+```
+
+One import. One wrap. Every call is policy-checked, optionally identity-screened, and logged as a signed `AgentEvent`. Same function signature in, same function signature out.
+
 ## The Problem
 
 AI agents act autonomously. There is no standard way to prove what they did, enforce what they can do, or produce compliance audit trails. MandateZ solves all three.

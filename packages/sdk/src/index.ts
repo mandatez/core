@@ -24,6 +24,10 @@ export type {
   TrackInput,
   CheckIdentityInput,
   CheckIdentityOutput,
+  VerifyAgentInput,
+  VerifyAgentOutput,
+  VerifyAgentRawResponse,
+  AgentTrustGrade,
 } from './client.js';
 
 export { checkIdentity, scoreBreaches } from './identity/hibp.js';
@@ -34,3 +38,8 @@ export type { AgentTrustProfile } from './trust/posture.js';
 
 export { MandateZN8nHook } from './integrations/n8n/index.js';
 export { MandateZLangChainCallback } from './integrations/langchain/index.js';
+
+export { MandateZAgent } from './wrapper/index.js';
+export type { MandateZAgentConfig } from './wrapper/index.js';
+
+export { withMandateZ } from './integrations/langchain/decorator.js';

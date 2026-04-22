@@ -46,6 +46,7 @@
     {
       "group": "Security Intelligence",
       "pages": [
+        "governance-report",
         "vercel-breach",
         "shadow-agent-discovery",
         "owasp-compliance",
