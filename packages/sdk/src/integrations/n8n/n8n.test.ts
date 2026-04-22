@@ -51,6 +51,7 @@ describe('MandateZN8nHook', () => {
       expect(event.metadata).toEqual({
         direction: 'before',
         inputData: input,
+        trust_score: 0,
       });
     });
   });
@@ -88,6 +89,7 @@ describe('MandateZN8nHook', () => {
         direction: 'after',
         outputData: output,
         success: true,
+        trust_score: 0,
       });
     });
   });

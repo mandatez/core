@@ -26,6 +26,18 @@ const TRUST_BADGE: Record<TrustGrade, { label: string; style: string }> = {
   verified:   { label: 'Verified', style: 'bg-emerald-900/40 text-emerald-300 border-emerald-700' },
 };
 
+const GRADE_RANK: Record<TrustGrade, number> = {
+  unverified: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  verified: 4,
+};
+
+function isVerifiable(grade: TrustGrade | null): boolean {
+  return GRADE_RANK[grade ?? 'unverified'] >= GRADE_RANK.medium;
+}
+
 const GRADE_COLORS: Record<TrustGrade, string> = {
   verified: '#10b981',
   high: '#3b82f6',
@@ -142,11 +154,12 @@ function AgentCard({ agent }: { agent: Agent }) {
       <div className="flex items-center gap-4">
         <MiniScoreArc score={score} grade={grade} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Link href={`/agents/${agent.id}`} className="font-medium text-gray-100 hover:underline">
               {agent.name}
             </Link>
             <TrustBadge grade={agent.trust_grade} />
+            {isVerifiable(agent.trust_grade) && <VerifiableBadge />}
           </div>
           <div className="text-xs text-gray-500 mt-0.5 font-mono">{agent.id}</div>
           <div className="flex gap-4 mt-2 text-xs text-gray-500">
@@ -173,6 +186,20 @@ function AgentCard({ agent }: { agent: Agent }) {
         </Link>
       </div>
     </div>
+  );
+}
+
+function VerifiableBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border font-semibold bg-cyan-900/30 text-cyan-300 border-cyan-800"
+      title="Eligible for agent-to-agent verification — other agents can call /api/agents/verify to confirm trust before transacting."
+    >
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+      Verifiable
+    </span>
   );
 }
 

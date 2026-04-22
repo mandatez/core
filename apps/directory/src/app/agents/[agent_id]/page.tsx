@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase-server';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ShareButton } from './share-button';
+import { VerifySnippet } from './verify-snippet';
 
 export const dynamic = 'force-dynamic';
 
@@ -255,6 +256,9 @@ export default async function AgentProfilePage(
         </div>
         <ShareButton cardUrl={cardUrl} profileUrl={profileUrl} agentId={a.id} />
       </div>
+
+      {/* Agent-to-agent verification snippet */}
+      <VerifySnippet agentId={a.id} directoryUrl={directoryUrl} />
     </div>
   );
 }

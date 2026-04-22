@@ -435,6 +435,148 @@ server.tool(
 );
 
 // ---------------------------------------------------------------------------
+// Tool 7 — verify_agent
+// ---------------------------------------------------------------------------
+
+type TrustGrade = 'unverified' | 'low' | 'medium' | 'high' | 'verified';
+
+const GRADE_RANK: Record<TrustGrade, number> = {
+  unverified: 0,
+  low: 1,
+  medium: 2,
+  high: 3,
+  verified: 4,
+};
+
+server.tool(
+  'verify_agent',
+  "Verify another AI agent's MandateZ credentials before allowing interaction. Returns trust score, grade, and whether the agent meets your minimum requirements.",
+  {
+    requesting_agent_id: z.string().describe('Agent ID of the agent making the request (ag_ prefix)'),
+    target_agent_id: z.string().describe('Agent ID of the agent being verified (ag_ prefix)'),
+    required_min_score: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .optional()
+      .describe('Minimum trust score the target must meet (default 60)'),
+    required_min_grade: z
+      .enum(['unverified', 'low', 'medium', 'high', 'verified'])
+      .optional()
+      .describe('Minimum trust grade the target must meet (default medium)'),
+  },
+  async ({ requesting_agent_id, target_agent_id, required_min_score, required_min_grade }) => {
+    const minScore = required_min_score ?? 60;
+    const minGrade: TrustGrade = required_min_grade ?? 'medium';
+
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!);
+
+      const { data: rows, error } = await supabase
+        .from('agents')
+        .select('id, name, public_key, trust_score, trust_grade')
+        .in('id', [requesting_agent_id, target_agent_id]);
+
+      if (error) {
+        return {
+          content: [{ type: 'text' as const, text: `Database error: ${error.message}` }],
+          isError: true,
+        };
+      }
+
+      const byId = new Map((rows ?? []).map((r: { id: string }) => [r.id, r]));
+      const requesting = byId.get(requesting_agent_id);
+      const target = byId.get(target_agent_id);
+
+      if (!target) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                { verified: false, error: 'Target agent not registered with MandateZ', target_agent_id },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      if (!requesting) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(
+                { verified: false, error: 'Requesting agent not registered with MandateZ', requesting_agent_id },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      type AgentRow = {
+        id: string;
+        name: string;
+        public_key: string;
+        trust_score: number | null;
+        trust_grade: TrustGrade | null;
+      };
+      const tgt = target as AgentRow;
+
+      const trustScore = tgt.trust_score ?? 0;
+      const trustGrade: TrustGrade = tgt.trust_grade ?? 'unverified';
+      const scoreMet = trustScore >= minScore;
+      const gradeMet = GRADE_RANK[trustGrade] >= GRADE_RANK[minGrade];
+      const verified = scoreMet && gradeMet;
+
+      const { randomUUID } = await import('node:crypto');
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(
+              {
+                verified,
+                trust_score: trustScore,
+                trust_grade: trustGrade,
+                public_key: tgt.public_key,
+                score_met: scoreMet,
+                grade_met: gradeMet,
+                required_min_score: minScore,
+                required_min_grade: minGrade,
+                verification_id: randomUUID(),
+                timestamp: new Date().toISOString(),
+              },
+              null,
+              2,
+            ),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Verification failed: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 

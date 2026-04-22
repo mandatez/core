@@ -34,6 +34,8 @@ export interface MandateZClientConfig {
   oversight?: OversightConfig;
   /** HaveIBeenPwned API key — required for checkIdentity() */
   hibpApiKey?: string;
+  /** MandateZ directory base URL used by verifyAgent(). Defaults to https://core-directory.vercel.app */
+  directoryUrl?: string;
 }
 
 export interface CheckIdentityInput {
@@ -48,6 +50,54 @@ export interface CheckIdentityOutput extends IdentityCheckResult {
   /** Effective action to take based on status + onFlagged policy */
   recommendation: 'allow' | 'restrict' | 'block';
 }
+
+export type AgentTrustGrade = 'unverified' | 'low' | 'medium' | 'high' | 'verified';
+
+export interface VerifyAgentInput {
+  requestingAgentId: string;
+  targetAgentId: string;
+  /** Minimum trust score the target must meet. Default 60. */
+  requiredMinScore?: number;
+  /** Minimum trust grade the target must meet. Default "medium". */
+  requiredMinGrade?: AgentTrustGrade;
+}
+
+export interface VerifyAgentOutput {
+  verified: boolean;
+  targetTrustScore: number;
+  targetTrustGrade: AgentTrustGrade;
+  targetPublicKey: string;
+  verificationId: string;
+  /** Raw response from the directory for callers that need the full payload */
+  raw: VerifyAgentRawResponse;
+}
+
+export interface VerifyAgentRawResponse {
+  verified: boolean;
+  requesting_agent: {
+    id: string;
+    name: string;
+    trust_score: number;
+    trust_grade: AgentTrustGrade;
+  };
+  target_agent: {
+    id: string;
+    name: string;
+    trust_score: number;
+    trust_grade: AgentTrustGrade;
+    public_key: string;
+  };
+  verification: {
+    score_met: boolean;
+    grade_met: boolean;
+    required_min_score: number;
+    required_min_grade: AgentTrustGrade;
+    timestamp: string;
+    verification_id: string;
+  };
+}
+
+const DEFAULT_DIRECTORY_URL = 'https://core-directory.vercel.app';
 
 /**
  * Main SDK surface for developers.
@@ -64,12 +114,14 @@ export class MandateZClient {
   private oversightGate: OversightGate | null;
   private trustProfile: AgentTrustProfile | null = null;
   private hibpApiKey: string | null;
+  private directoryUrl: string;
 
   constructor(config: MandateZClientConfig) {
     this.agentId = config.agentId;
     this.ownerId = config.ownerId;
     this.privateKey = config.privateKey;
     this.hibpApiKey = config.hibpApiKey ?? null;
+    this.directoryUrl = (config.directoryUrl ?? DEFAULT_DIRECTORY_URL).replace(/\/+$/, '');
     this.transport = new SupabaseTransport({
       supabaseUrl: config.supabaseUrl,
       supabaseAnonKey: config.supabaseAnonKey,
@@ -213,5 +265,55 @@ export class MandateZClient {
     else recommendation = 'allow';
 
     return { ...result, recommendation };
+  }
+
+  /**
+   * Verify another agent's MandateZ credentials before transacting with it.
+   *
+   * Calls the MandateZ directory's /api/agents/verify endpoint and returns
+   * whether the target agent meets the minimum trust score and grade you
+   * specified. Use this at the edge of any cross-agent interaction.
+   *
+   * @example
+   * const result = await client.verifyAgent({
+   *   requestingAgentId: 'ag_my_agent',
+   *   targetAgentId: 'ag_partner_agent',
+   *   requiredMinScore: 70,
+   * });
+   * if (!result.verified) {
+   *   throw new Error('Partner agent failed MandateZ verification');
+   * }
+   */
+  async verifyAgent(input: VerifyAgentInput): Promise<VerifyAgentOutput> {
+    const res = await fetch(`${this.directoryUrl}/api/agents/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requesting_agent_id: input.requestingAgentId,
+        target_agent_id: input.targetAgentId,
+        required_min_score: input.requiredMinScore,
+        required_min_grade: input.requiredMinGrade,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(
+        err.error
+          ? `MandateZ verifyAgent failed: ${err.error}`
+          : `MandateZ verifyAgent failed: HTTP ${res.status}`,
+      );
+    }
+
+    const raw = (await res.json()) as VerifyAgentRawResponse;
+
+    return {
+      verified: raw.verified,
+      targetTrustScore: raw.target_agent.trust_score,
+      targetTrustGrade: raw.target_agent.trust_grade,
+      targetPublicKey: raw.target_agent.public_key,
+      verificationId: raw.verification.verification_id,
+      raw,
+    };
   }
 }
