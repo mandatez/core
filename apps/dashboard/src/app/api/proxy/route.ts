@@ -39,6 +39,51 @@ const UNSAFE_FORWARD_HEADERS = new Set([
 type ActionType = AgentEventInput['action_type'];
 const VALID_ACTION_TYPES: readonly ActionType[] = ['read', 'write', 'export', 'delete', 'call', 'payment'];
 
+// --- SSRF guard -----------------------------------------------------------
+// Block private, loopback, link-local, and cloud-metadata targets so a
+// compromised agent cannot use MandateZ as a pivot into internal networks.
+const PRIVATE_IP_PATTERNS: RegExp[] = [
+  /^127\./,                              // loopback
+  /^10\./,                               // RFC1918
+  /^172\.(1[6-9]|2\d|3[01])\./,          // RFC1918
+  /^192\.168\./,                         // RFC1918
+  /^169\.254\./,                         // link-local (AWS/GCP metadata)
+  /^0\./,                                // "this" network
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // CGNAT
+  /^::1$/,                               // IPv6 loopback
+  /^fc/, /^fd/,                          // IPv6 unique-local
+  /^fe80:/,                              // IPv6 link-local
+];
+
+const BLOCKED_HOSTS = new Set<string>([
+  'localhost',
+  'metadata.google.internal',
+  'metadata.goog',
+]);
+
+function isBlockedTarget(url: URL): string | null {
+  if (url.protocol !== 'https:') return 'target must use https';
+  const host = url.hostname.toLowerCase();
+  if (BLOCKED_HOSTS.has(host)) return 'target host is blocked';
+  if (PRIVATE_IP_PATTERNS.some((re) => re.test(host))) {
+    return 'target resolves to a private or link-local address';
+  }
+  return null;
+}
+
+const MAX_PROXY_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
+
+// --- Policy cache ---------------------------------------------------------
+// Hitting Supabase on every proxied call is unsustainable for high-traffic
+// agents. Cache the per-owner policy list for 30s — stale enough to feel
+// real-time, short enough that revoked rules kick in within a cron cycle.
+const POLICY_CACHE_TTL_MS = 30_000;
+interface PolicyCacheEntry {
+  policies: Policy[];
+  expiresAt: number;
+}
+const policyCache = new Map<string, PolicyCacheEntry>();
+
 interface AgentRow {
   id: string;
   owner_id: string;
@@ -188,6 +233,19 @@ async function loadPolicies(
   }));
 }
 
+async function loadPoliciesCached(
+  supabase: ReturnType<typeof createServerClient>,
+  ownerId: string,
+): Promise<Policy[]> {
+  const now = Date.now();
+  const cached = policyCache.get(ownerId);
+  if (cached && cached.expiresAt > now) return cached.policies;
+
+  const fresh = await loadPolicies(supabase, ownerId);
+  policyCache.set(ownerId, { policies: fresh, expiresAt: now + POLICY_CACHE_TTL_MS });
+  return fresh;
+}
+
 function buildForwardHeaders(incoming: Headers): Headers {
   const out = new Headers();
   incoming.forEach((value, key) => {
@@ -230,8 +288,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch {
     return errorResponse(400, { error: `invalid X-MandateZ-Target-URL: not a valid URL` });
   }
-  if (target.protocol !== 'https:' && target.protocol !== 'http:') {
-    return errorResponse(400, { error: 'target URL must use http or https' });
+
+  const blocked = isBlockedTarget(target);
+  if (blocked) {
+    return errorResponse(400, { error: blocked });
+  }
+
+  const contentLength = Number.parseInt(headers.get('content-length') ?? '0', 10);
+  if (Number.isFinite(contentLength) && contentLength > MAX_PROXY_BODY_BYTES) {
+    return errorResponse(413, { error: 'request body exceeds 5 MB proxy cap' });
   }
 
   const actionTypeHeader = (headers.get(H_ACTION_TYPE)?.trim() ?? 'call').toLowerCase() as ActionType;
@@ -264,7 +329,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   }
 
-  const policies = await loadPolicies(supabase, ownerId).catch(() => [] as Policy[]);
+  const policies = await loadPoliciesCached(supabase, ownerId).catch(() => [] as Policy[]);
 
   const engine = new PolicyEngine();
   for (const p of policies) {
@@ -328,6 +393,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let bodyBuffer: ArrayBuffer | null = null;
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     bodyBuffer = await request.arrayBuffer();
+    if (bodyBuffer.byteLength > MAX_PROXY_BODY_BYTES) {
+      return errorResponse(413, { error: 'request body exceeds 5 MB proxy cap' });
+    }
   }
 
   let targetResponse: Response;

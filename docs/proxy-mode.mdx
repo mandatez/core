@@ -188,12 +188,27 @@ you want to group multiple upstream APIs under a single policy prefix.
 
 MandateZ Proxy **does not store request or response bodies**. Only the action type, resource,
 outcome, policy ID, HTTP method, status code, and timestamp are logged — never your prompts,
-API payloads, or upstream responses. Every logged event is Ed25519-signed with an escrowed
-key bound to your agent ID, so the audit trail is cryptographically verifiable without
-MandateZ having access to your workload data.
+API payloads, or upstream responses.
 
-The proxy is stateless with respect to content: the request body is streamed from your agent
-to the target and the response body is streamed back, never buffered for inspection.
+Every event is Ed25519-signed by an escrowed key bound to your agent ID. Because the key is
+managed by MandateZ on your behalf, Proxy Mode's audit trail is most useful when governance
+is the security boundary. For workloads where cryptographic non-repudiation from the agent
+runtime itself is required (e.g. EU AI Act Article 12 for regulated-industry deployments),
+use the SDK directly so the private key never leaves your infrastructure.
+
+## Network Policy
+
+MandateZ Proxy forwards only to public HTTPS endpoints. Private IPs (RFC1918, loopback,
+link-local, CGNAT), cloud metadata endpoints (`169.254.169.254`,
+`metadata.google.internal`), and plain HTTP targets are rejected with a 400. Request bodies
+larger than 5 MB are rejected with a 413.
+
+## Cache Behaviour
+
+Proxy Mode caches your per-owner policy list in memory for **30 seconds**. Policy changes
+made through the dashboard take effect on the next cache refresh — worst case ~30 s for a
+hot proxy instance, immediate for a cold one. If you need to force a policy rollout faster,
+redeploy the dashboard or evict the cache entry for that owner.
 
 ## Proxy Mode vs SDK
 
