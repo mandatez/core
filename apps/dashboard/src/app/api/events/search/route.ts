@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
-import { requireApiKeyAuth } from '@/lib/require-auth';
+import { requireApiKeyAuth, requireOrgRole } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -84,6 +84,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await requireApiKeyAuth(request);
   if (!auth.ok) return auth.response;
   const ownerId = auth.ownerId;
+
+  // Optional org scoping: when a caller sends x-mandatez-org-id, require
+  // membership with at least viewer role. Viewers can search because the
+  // audit trail is a read-only surface by design.
+  const orgId = request.headers.get('x-mandatez-org-id')?.trim();
+  if (orgId) {
+    const authOrg = await requireOrgRole(request, orgId, [
+      'admin',
+      'security_analyst',
+      'viewer',
+    ]);
+    if (!authOrg.ok) return authOrg.response;
+  }
 
   const params = request.nextUrl.searchParams;
   const qRaw = params.get('q')?.trim() ?? null;
