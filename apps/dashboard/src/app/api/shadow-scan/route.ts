@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -302,7 +303,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const ownerId = body.owner_id?.trim() ?? '';
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.owner_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
+
   const targets = body.scan_targets ?? {};
   const scannedTargets: string[] = [];
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { POLICY_TEMPLATES, POLICY_TEMPLATE_LIST, findTemplate } from '@mandatez/sdk';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,9 @@ interface FromTemplateInput {
   name?: string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
   return NextResponse.json({
     templates: POLICY_TEMPLATE_LIST.map((t) => ({
       key: t.key,
@@ -38,10 +41,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const ownerId = body.owner_id?.trim();
-  if (!ownerId) {
-    return NextResponse.json({ error: 'owner_id is required' }, { status: 400 });
-  }
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.owner_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
 
   const templateRef = body.template_id?.trim();
   if (!templateRef) {

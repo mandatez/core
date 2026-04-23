@@ -31,12 +31,12 @@ interface DueSchedule {
   frequency: Frequency;
 }
 
-// Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`. If the secret is
-// set we enforce it. If not (local dev, manual trigger), we allow — callers
-// already need SUPABASE_SERVICE_ROLE_KEY in env to reach the DB.
+// Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`. The secret MUST be
+// configured in every environment — fail closed if it is missing so a
+// misconfigured deployment cannot expose the cron endpoint to the public.
 function isAuthorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
   const header = request.headers.get('authorization');
   return header === `Bearer ${secret}`;
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import { createSignedEvent, generateAgentIdentity } from '@mandatez/sdk';
 
 export const runtime = 'nodejs';
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic';
 const AGENT_ID_RE = /^ag_[A-Za-z0-9_-]+$/;
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ agent_id: string }> },
 ) {
   const { agent_id } = await params;
@@ -16,6 +17,9 @@ export async function POST(
   if (!AGENT_ID_RE.test(agent_id)) {
     return NextResponse.json({ error: 'Invalid agent_id format' }, { status: 400 });
   }
+
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
 
   const supabase = createServerClient();
 
@@ -25,7 +29,9 @@ export async function POST(
     .eq('id', agent_id)
     .single();
 
-  if (fetchErr || !agent) {
+  // Return 404 on mismatch so we do not leak whether an agent_id exists
+  // across tenants.
+  if (fetchErr || !agent || agent.owner_id !== auth.ownerId) {
     return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
   }
 

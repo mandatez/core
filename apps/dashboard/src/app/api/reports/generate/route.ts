@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import {
   assembleReportData,
   generateCompliancePdf,
@@ -23,13 +24,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const ownerId = body.owner_id?.trim();
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.owner_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
+
   const reportType = body.report_type as ReportType | undefined;
   const format = body.format ?? 'pdf';
 
-  if (!ownerId) {
-    return NextResponse.json({ error: 'owner_id is required' }, { status: 400 });
-  }
   if (!reportType || !VALID_REPORT_TYPES.includes(reportType)) {
     return NextResponse.json(
       { error: `report_type must be one of: ${VALID_REPORT_TYPES.join(', ')}` },

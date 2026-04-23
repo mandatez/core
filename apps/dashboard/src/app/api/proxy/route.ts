@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import {
   generateAgentIdentity,
   createSignedEvent,
@@ -205,14 +206,18 @@ function errorResponse(status: number, body: Record<string, unknown>): NextRespo
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const started = Date.now();
 
+  const auth = await requireApiKeyAuth(request, {
+    bodyOwnerId: request.headers.get(H_OWNER_ID)?.trim() ?? null,
+  });
+  if (!auth.ok) return auth.response;
+
   // --- 1. Extract and validate headers -----------------------------------
   const headers = request.headers;
   const agentId = headers.get(H_AGENT_ID)?.trim();
-  const ownerId = headers.get(H_OWNER_ID)?.trim();
+  const ownerId = auth.ownerId;
   const targetUrl = headers.get(H_TARGET_URL)?.trim();
 
   if (!agentId) return errorResponse(400, { error: `missing required header: ${H_AGENT_ID}` });
-  if (!ownerId) return errorResponse(400, { error: `missing required header: ${H_OWNER_ID}` });
   if (!targetUrl) return errorResponse(400, { error: `missing required header: ${H_TARGET_URL}` });
 
   if (!/^ag_[A-Za-z0-9_-]+$/.test(agentId)) {
@@ -236,6 +241,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // --- 2. Load agent identity + policies --------------------------------
   const supabase = createServerClient();
+
+  // Pre-check: if the agent already exists under another owner, return 404
+  // so we do not leak whether the agent_id is taken across tenants.
+  const ownershipRes = await supabase
+    .from('agents')
+    .select('id, owner_id')
+    .eq('id', agentId)
+    .maybeSingle();
+  if (ownershipRes.data && ownershipRes.data.owner_id !== ownerId) {
+    return errorResponse(404, { error: 'Agent not found' });
+  }
 
   let identity: { privateKey: string; publicKey: string };
   try {

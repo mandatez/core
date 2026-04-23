@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -60,13 +61,9 @@ function normalizeBool(value: unknown, fallback: boolean): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  const ownerId = request.nextUrl.searchParams.get('owner_id')?.trim();
-  if (!ownerId) {
-    return NextResponse.json(
-      { error: 'owner_id query parameter is required' },
-      { status: 400 },
-    );
-  }
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
 
   const supabase = createServerClient();
   const { data, error } = await supabase
@@ -94,10 +91,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const ownerId = normalizeString(body.owner_id);
-  if (!ownerId) {
-    return NextResponse.json({ error: 'owner_id is required' }, { status: 400 });
-  }
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: normalizeString(body.owner_id) });
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
 
   const slack = normalizeString(body.slack_webhook_url);
   const email = normalizeString(body.email_address);

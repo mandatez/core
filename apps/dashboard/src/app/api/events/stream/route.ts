@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
-import { extractApiKey, validateApiKey } from '@/lib/auth';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,31 +28,10 @@ function formatSse(event: string, data: unknown): string {
 }
 
 export async function GET(request: NextRequest) {
-  const ownerId = request.nextUrl.searchParams.get('owner_id')?.trim();
-  if (!ownerId) {
-    return new Response(
-      JSON.stringify({ error: 'owner_id query parameter is required' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
-    );
-  }
-
-  // Optional API key auth. If provided, its owner must match owner_id.
-  const apiKey = extractApiKey(request.headers);
-  if (apiKey) {
-    const validation = await validateApiKey(apiKey);
-    if (!validation.valid) {
-      return new Response(
-        JSON.stringify({ error: `API key ${validation.reason}` }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    if (validation.owner_id !== ownerId) {
-      return new Response(
-        JSON.stringify({ error: 'owner_id does not match API key owner' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-  }
+  const bodyOwnerId = request.nextUrl.searchParams.get('owner_id')?.trim() ?? null;
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId });
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
 
   const supabase = createServerClient();
   const encoder = new TextEncoder();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -80,16 +81,11 @@ function sanitizeQForIlike(q: string): string {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
+
   const params = request.nextUrl.searchParams;
-
-  const ownerId = params.get('owner_id')?.trim();
-  if (!ownerId) {
-    return NextResponse.json(
-      { error: 'owner_id query parameter is required' },
-      { status: 400 },
-    );
-  }
-
   const qRaw = params.get('q')?.trim() ?? null;
   const q = qRaw && qRaw.length > 0 ? qRaw : null;
 

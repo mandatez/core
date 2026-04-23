@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import { POLICY_PRESETS, findPreset } from '@/lib/policy-presets';
 
 export const runtime = 'nodejs';
@@ -17,7 +18,9 @@ interface SavePolicyInput {
   agent_id?: string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
   return NextResponse.json({ presets: POLICY_PRESETS });
 }
 
@@ -29,10 +32,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const ownerId = body.owner_id?.trim();
-  if (!ownerId) {
-    return NextResponse.json({ error: 'owner_id is required' }, { status: 400 });
-  }
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.owner_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
 
   const preset = findPreset(body.preset);
   if (!preset) {

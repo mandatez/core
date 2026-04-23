@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,9 @@ const TEST_PAYLOAD = {
 };
 
 export async function POST(request: NextRequest) {
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+
   let body: TestAlertRequest;
   try {
     body = (await request.json()) as TestAlertRequest;

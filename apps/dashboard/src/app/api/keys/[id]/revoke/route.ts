@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -16,14 +17,18 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid key id' }, { status: 400 });
   }
 
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+
   const supabase = createServerClient();
   const { data: existing, error: fetchErr } = await supabase
     .from('api_keys')
-    .select('id, revoked_at')
+    .select('id, owner_id, revoked_at')
     .eq('id', id)
     .maybeSingle();
 
-  if (fetchErr || !existing) {
+  // Return 404 on cross-tenant mismatch so we do not leak key IDs.
+  if (fetchErr || !existing || existing.owner_id !== auth.ownerId) {
     return NextResponse.json({ error: 'Key not found' }, { status: 404 });
   }
   if (existing.revoked_at) {

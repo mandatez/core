@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const ownerId = request.nextUrl.searchParams.get('owner_id')?.trim();
-  if (!ownerId) {
-    return NextResponse.json({ error: 'owner_id query param is required' }, { status: 400 });
-  }
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
 
   const supabase = createServerClient();
   const { data, error } = await supabase

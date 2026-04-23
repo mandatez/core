@@ -171,6 +171,10 @@ function generateSvg(agent: {
 </svg>`;
 }
 
+// Intentionally public: trust-card SVGs are meant to be embedded in READMEs,
+// blog posts, and agent directory profiles. Requiring an API key here would
+// break the shareable-badge use case. The endpoint exposes only non-secret
+// trust-score data that is also visible in the public agent directory.
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ agent_id: string }> },

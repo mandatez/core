@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import { rbacErrorResponse, requireRole, ROLES, type Role } from '@/lib/rbac';
 
 export const runtime = 'nodejs';
@@ -26,14 +27,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; user_id: string }> },
 ) {
   const { id: orgId, user_id: targetUserId } = await params;
-  const callerUserId = request.nextUrl.searchParams.get('user_id')?.trim();
 
-  if (!callerUserId) {
-    return NextResponse.json(
-      { error: 'user_id query parameter is required' },
-      { status: 400 },
-    );
-  }
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+  const callerUserId = auth.ownerId;
 
   try {
     await requireRole(callerUserId, orgId, ['admin']);
@@ -80,10 +77,9 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const callerUserId = body.user_id?.trim();
-  if (!callerUserId) {
-    return NextResponse.json({ error: 'user_id is required' }, { status: 400 });
-  }
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.user_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const callerUserId = auth.ownerId;
 
   const role = body.role?.trim() as Role | undefined;
   if (!role || !ROLES.includes(role)) {

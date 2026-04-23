@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,13 +16,9 @@ function normalizeSlug(raw: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get('user_id')?.trim();
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'user_id query parameter is required' },
-      { status: 400 },
-    );
-  }
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+  const userId = auth.ownerId;
 
   const supabase = createServerClient();
 
@@ -69,14 +66,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const userId = body.user_id?.trim();
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.user_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const userId = auth.ownerId;
+
   const name = body.name?.trim();
   const email = body.email?.trim();
   const slug = body.slug ? normalizeSlug(body.slug) : name ? normalizeSlug(name) : '';
 
-  if (!userId) {
-    return NextResponse.json({ error: 'user_id is required' }, { status: 400 });
-  }
   if (!name) {
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }

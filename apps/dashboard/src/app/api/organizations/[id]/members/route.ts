@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import { rbacErrorResponse, requireRole, ROLES, type Role } from '@/lib/rbac';
 
 export const runtime = 'nodejs';
@@ -22,10 +23,9 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const userId = body.user_id?.trim();
-  if (!userId) {
-    return NextResponse.json({ error: 'user_id is required' }, { status: 400 });
-  }
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.user_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const userId = auth.ownerId;
 
   try {
     await requireRole(userId, orgId, ['admin']);

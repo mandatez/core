@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
-import { extractApiKey, validateApiKey } from '@/lib/auth';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import { AgentEventSchema, verifyEvent, type AgentEvent } from '@mandatez/sdk';
 
 export const runtime = 'nodejs';
@@ -29,38 +29,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  // Auth: prefer API key; fall back to owner_id in body.
-  const apiKey = extractApiKey(request.headers);
-  let authorizedOwnerId: string | null = null;
-
-  if (apiKey) {
-    const validation = await validateApiKey(apiKey);
-    if (!validation.valid) {
-      return NextResponse.json(
-        { error: `API key ${validation.reason}` },
-        { status: 401 },
-      );
-    }
-    authorizedOwnerId = validation.owner_id;
-  }
-
-  const bodyOwnerId = body.owner_id?.trim();
-  const ownerId = authorizedOwnerId ?? bodyOwnerId;
-
-  if (!ownerId) {
-    return NextResponse.json(
-      { error: 'owner_id is required (pass in body or authenticate with API key)' },
-      { status: 401 },
-    );
-  }
-
-  // If both provided, they must match — prevents cross-tenant inserts.
-  if (authorizedOwnerId && bodyOwnerId && authorizedOwnerId !== bodyOwnerId) {
-    return NextResponse.json(
-      { error: 'owner_id in body does not match API key owner' },
-      { status: 403 },
-    );
-  }
+  const auth = await requireApiKeyAuth(request, { bodyOwnerId: body.owner_id?.trim() ?? null });
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
 
   const events = body.events;
   if (!Array.isArray(events)) {

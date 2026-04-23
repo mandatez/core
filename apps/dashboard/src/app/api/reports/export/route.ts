@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
+import { requireApiKeyAuth } from '@/lib/require-auth';
 import { generateComplianceReport } from '@/lib/report-generator';
 
 export async function GET(request: NextRequest) {
+  const auth = await requireApiKeyAuth(request);
+  if (!auth.ok) return auth.response;
+  const ownerId = auth.ownerId;
+
   const searchParams = request.nextUrl.searchParams;
-  const ownerId = searchParams.get('owner_id');
   const format = searchParams.get('format') ?? 'json';
   const from = searchParams.get('from');
   const to = searchParams.get('to');
-
-  if (!ownerId) {
-    return NextResponse.json({ error: 'owner_id is required' }, { status: 400 });
-  }
 
   const supabase = createServerClient();
 
