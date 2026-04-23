@@ -142,14 +142,14 @@ For agents specifically: the deployer needs to know what tools the agent can cal
 
 ### How MandateZ Covers It
 
-Every agent registered with MandateZ has a **public agent profile** in the Agent Directory. The profile exposes:
+Agents registered with MandateZ can opt into the public Agent Directory profile via the dashboard. Once opted in, the profile exposes:
 
 - The policies in force (action types, resource patterns, outcomes)
 - The oversight configuration (which actions require human approval, the timeout, the default action)
 - The [trust score](/trust-scoring) and its four components
 - The public Ed25519 key for independent signature verification
 
-This satisfies Article 13's transparency requirement in a machine-readable, cross-vendor format. Deployers inspecting an agent from a different provider can verify its disclosed capabilities against its actual event stream.
+This satisfies Article 13's transparency requirement in a machine-readable, cross-vendor format for the agents you choose to publish. Deployers inspecting a listed third-party agent can verify its disclosed capabilities against its actual event stream.
 
 ```typescript
 // A deployer inspecting a third-party agent
@@ -231,7 +231,7 @@ August 2, 2026 is when general-purpose AI model obligations (Article 51 onwards)
 
 ### Which EU AI Act articles does MandateZ cover?
 
-MandateZ provides specific controls for Article 9 (risk management — via policy configuration mapped to the OWASP Agentic Top 10), Article 12 (record-keeping — via signed, tamper-evident agent events), Article 13 (transparency — via the public agent profile in the Agent Directory), and Article 14 (human oversight — via the approval gate with configurable timeout and default action).
+MandateZ provides specific controls for Article 9 (risk management — via policy configuration mapped to the OWASP Agentic Top 10), Article 12 (record-keeping — via signed, tamper-evident agent events), Article 13 (transparency — via the opt-in public agent profile in the Agent Directory), and Article 14 (human oversight — via the approval gate with configurable timeout and default action).
 
 ### How does MandateZ satisfy Article 12's logging requirement?
 
@@ -288,7 +288,7 @@ MandateZ's signed event stream is GDPR Article 30 (records of processing) and Ar
       "name": "Which EU AI Act articles does MandateZ cover?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "MandateZ provides specific controls for Article 9 (risk management via policy rules mapped to OWASP Agentic Top 10), Article 12 (record-keeping via signed agent events), Article 13 (transparency via the public agent profile), and Article 14 (human oversight via the approval gate)."
+        "text": "MandateZ provides specific controls for Article 9 (risk management via policy rules mapped to OWASP Agentic Top 10), Article 12 (record-keeping via signed agent events), Article 13 (transparency via the opt-in public agent profile), and Article 14 (human oversight via the approval gate)."
       }
     },
     {

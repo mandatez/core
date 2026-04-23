@@ -5,7 +5,7 @@ description: "Technical breakdown of the April 19, 2026 Vercel/Context.ai AI age
 
 # The Vercel/Context.ai Breach — What Happened and How to Prevent It
 
-On **April 19, 2026**, an AI indexing agent built by Context.ai — installed into thousands of Vercel customer projects via a sanctioned OAuth integration — became the pivot point for a credential exfiltration that exposed environment variables, database keys, and third-party API tokens across hundreds of customer projects. Detection lag: **nine days**. Cause: an over-scoped OAuth token attached to an agent with no verifiable identity and no governance layer watching what it actually did.
+On **April 19, 2026**, an AI indexing agent built by Context.ai — installed into thousands of Vercel customer projects via a sanctioned OAuth integration — became the pivot point for a credential exfiltration that exposed environment variables, database keys, and third-party API tokens across hundreds of customer projects. Public reporting suggests detection lag of approximately **nine days**. Cause: an over-scoped OAuth token attached to an agent with no verifiable identity and no governance layer watching what it actually did.
 
 This page is a concise technical breakdown of the incident, its exact mapping to the OWASP Agentic Security Initiative taxonomy, and the five-minute MandateZ configuration that closes the failure mode structurally.
 
@@ -27,9 +27,9 @@ When Context.ai's infrastructure was compromised, the attacker exfiltrated the O
 
 The `env:read` scope spanned every project in the installing user's team. The attacker iterated: `GET /v9/projects/*/env` across hundreds of projects per token. Environment payloads contained production Supabase keys, Stripe secrets, Anthropic and OpenAI API keys, and long-lived S3 service-account tokens.
 
-### Stage 4 — Silent Persistence
+### Stage 4 — Delayed Detection (Inferred from Public Reporting)
 
-At no point did the enumeration look anomalous to Vercel's API, because the token was valid. The anomaly was visible only at the **agent layer** — an indexing agent that historically performed read-only operations on a single project was now iterating every project in the team. No system at Vercel was measuring the agent's own behavior distribution. Between exfiltration and detection: nine days.
+At no point did the enumeration look anomalous to Vercel's API, because the token was valid. The anomaly was visible only at the **agent layer** — an indexing agent that historically performed read-only operations on a single project was now iterating every project in the team. No system at Vercel was measuring the agent's own behavior distribution. Public reporting suggests a detection lag of approximately nine days between exfiltration and discovery.
 
 ---
 
@@ -370,7 +370,7 @@ See the [Python SDK](/sdk/python) for the one-line setup.
 
 ### Step 5 — Watch the Dashboard
 
-Every agent action streams in, signed, policy-checked, trust-scored. If a Vercel-class attack begins, the blocked-event spike is visible within 30 seconds. Detection lag goes from nine days to under five minutes.
+Every agent action streams in, signed, policy-checked, trust-scored. If a Vercel-class attack begins, the blocked-event spike is visible within 30 seconds. The approximately nine-day detection lag suggested by public reporting becomes under five minutes.
 
 ---
 
@@ -378,7 +378,7 @@ Every agent action streams in, signed, policy-checked, trust-scored. If a Vercel
 
 ### What happened in the Vercel/Context.ai breach?
 
-On April 19, 2026, an AI indexing agent built by Context.ai was compromised at the vendor, and its OAuth tokens were replayed by an attacker against Vercel's API. The token carried team-wide `env:read` scope, letting the attacker enumerate environment variables across hundreds of customer projects. Detection took nine days.
+On April 19, 2026, an AI indexing agent built by Context.ai was compromised at the vendor, and its OAuth tokens were replayed by an attacker against Vercel's API. The token carried team-wide `env:read` scope, letting the attacker enumerate environment variables across hundreds of customer projects. Public reporting suggests a detection lag of approximately nine days.
 
 ### Was the Vercel breach a credential hygiene failure?
 
@@ -423,7 +423,7 @@ Three signals fire within the first minute of a Vercel-class attack. One, the pe
       "name": "What happened in the Vercel/Context.ai breach?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "On April 19, 2026, an AI indexing agent built by Context.ai was compromised at the vendor, and its OAuth tokens were replayed by an attacker against Vercel's API. The token carried team-wide env:read scope, letting the attacker enumerate environment variables across hundreds of customer projects. Detection took nine days."
+        "text": "On April 19, 2026, an AI indexing agent built by Context.ai was compromised at the vendor, and its OAuth tokens were replayed by an attacker against Vercel's API. The token carried team-wide env:read scope, letting the attacker enumerate environment variables across hundreds of customer projects. Public reporting suggests a detection lag of approximately nine days."
       }
     },
     {

@@ -109,18 +109,31 @@ Once discovered, each shadow agent can be brought under MandateZ governance in o
 3. **Decommission** — If the agent's owner cannot be identified or the agent serves no current purpose, revoke its credential and close the loop.
 
 ```typescript
-// Register a discovered shadow agent under governance
-import { registerDiscoveredAgent } from '@mandatez/sdk';
+// Register a discovered shadow agent under governance.
+// MandateZ does not mint an identity from a scan finding directly — you
+// generate the keypair locally (so the private key never leaves your
+// infrastructure) and register the agent via the dashboard API.
+import { generateAgentIdentity } from '@mandatez/sdk';
 
-const registered = await registerDiscoveredAgent({
-  shadow_agent_id: 'shadow_7f2a',
-  suggested_name: 'Context.ai Indexing Agent',
-  suggested_owner: 'context_ai_org',
-  initial_policy: 'pol_default_deny',
+const identity = await generateAgentIdentity();
+
+const res = await fetch('https://dashboard.mandatez.com/api/agents/register', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.MANDATEZ_API_KEY!}`,
+    'Content-Type':  'application/json',
+  },
+  body: JSON.stringify({
+    name:        'Context.ai Indexing Agent',
+    framework:   'LangChain',
+    environment: 'production',
+  }),
 });
+const registered = await res.json();
 
 console.log(registered.agent_id);   // 'ag_xK9mP2...' — now under MandateZ
 console.log(registered.public_key); // signature verification ready
+// Store identity.private_key in your secret manager — it is never returned again.
 ```
 
 ---

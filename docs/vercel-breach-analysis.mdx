@@ -36,9 +36,9 @@ The exfiltrated environment variables included credentials for Supabase, Stripe,
 
 At no point did the originating agent's behavior look anomalous **to Vercel's API**, because Vercel's API was answering a valid token. The anomaly was visible only at the agent layer — an agent that normally performed read-only indexing was suddenly iterating every project in the team.
 
-### Stage 4 — Silent persistence
+### Stage 4 — Delayed detection (inferred from public reporting)
 
-The compromise was detected only after a downstream customer noticed unusual Stripe activity. Between initial exfiltration and detection: **nine days**. No alert fired because no system was watching the agent's action distribution.
+Public reporting suggests the compromise was detected only after a downstream customer noticed unusual Stripe activity. Public reporting suggests a detection lag of approximately nine days. No alert fired because no system was watching the agent's action distribution.
 
 ---
 
@@ -211,7 +211,7 @@ This is the structural difference between a **bearer** token and a **signed** id
 
 ## 5. The Audit Trail That Would Have Surfaced It in Real Time
 
-In the actual Vercel incident, detection lag was nine days. With MandateZ running on the indexing agent, the anomaly signature would have been visible within the first 30 seconds of Stage 2.
+Public reporting suggests detection lag of approximately nine days in the Vercel incident. With MandateZ running on the indexing agent, the anomaly signature would have been visible within the first 30 seconds of Stage 2.
 
 ### What the dashboard would have shown
 
@@ -227,7 +227,7 @@ The live event feed shows every action — allowed, blocked, and flagged — in 
 
 Every agent in the MandateZ dashboard has a one-click revoke button. Revocation works by rotating the agent's registered public key — every subsequent event signature fails verification, and every policy check returns blocked by default.
 
-For the Context.ai scenario, the response window would have shrunk from nine days to under five minutes.
+For the Context.ai scenario, the response window would have shrunk from the approximately nine days suggested by public reporting to under five minutes.
 
 ### What the audit export looks like
 
