@@ -97,6 +97,51 @@ const event = await client.track({
 - **Compliance Reports** — JSON + PDF audit trail export
 - **Framework Integrations** — LangChain, n8n, with more coming
 
+## Observability Exporters
+
+Fan MandateZ events out to your existing observability or SIEM stack — Datadog, Splunk, any OpenTelemetry collector, or an arbitrary webhook. Exporters are fire-and-forget: they run in parallel after every `track()` and never block or throw on the hot path.
+
+```typescript
+import {
+  MandateZClient,
+  DatadogExporter,
+  WebhookExporter,
+} from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  agentId: '...',
+  ownerId: '...',
+  privateKey: '...',
+  supabaseUrl: '...',
+  supabaseAnonKey: '...',
+  exporters: [
+    new DatadogExporter({
+      apiKey: process.env.DD_API_KEY!,
+      site: 'datadoghq.com',
+    }),
+    new WebhookExporter({
+      url: 'https://your-siem.com/mandatez',
+    }),
+  ],
+});
+
+// Every tracked event now flows to Datadog and your webhook.
+await client.track({ action_type: 'read', resource: 'emails' });
+```
+
+Built-in exporters:
+
+| Exporter | Destination | Import |
+|---|---|---|
+| `DatadogExporter` | Datadog Logs v2 HTTP intake | `@mandatez/sdk` |
+| `SplunkExporter` | Splunk HTTP Event Collector | `@mandatez/sdk` |
+| `OpenTelemetryExporter` | Any OTLP/HTTP collector (Grafana Tempo, Honeycomb, New Relic, etc.) | `@mandatez/sdk` |
+| `WebhookExporter` | Any HTTPS URL (generic fan-out) | `@mandatez/sdk` |
+
+Custom exporters implement the `EventExporter` interface — `{ name: string; export(event: AgentEvent): Promise<void> }` — and drop into the same `exporters: [...]` array.
+
+Full setup instructions and payload shapes: [Exporters docs](https://mandatez.mintlify.app/exporters).
+
 ## Integrations
 
 ### LangChain

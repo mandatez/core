@@ -9,6 +9,7 @@ import type { AgentEvent, AgentEventInput } from './events/schema.js';
 import type { Policy } from './policy/index.js';
 import type { OversightConfig } from './oversight/index.js';
 import type { IdentityCheckResult } from './identity/hibp.js';
+import type { EventExporter } from './exporters/index.js';
 
 /** The action fields a developer passes to track() */
 export interface TrackInput {
@@ -36,6 +37,12 @@ export interface MandateZClientConfig {
   hibpApiKey?: string;
   /** MandateZ directory base URL used by verifyAgent(). Defaults to https://core-directory.vercel.app */
   directoryUrl?: string;
+  /**
+   * Optional list of downstream exporters. After each track() call the
+   * signed event is fanned out to every configured exporter in parallel
+   * (fire-and-forget — exporter failures never block or throw from track()).
+   */
+  exporters?: EventExporter[];
 }
 
 export interface CheckIdentityInput {
@@ -115,6 +122,7 @@ export class MandateZClient {
   private trustProfile: AgentTrustProfile | null = null;
   private hibpApiKey: string | null;
   private directoryUrl: string;
+  private exporters: EventExporter[];
 
   constructor(config: MandateZClientConfig) {
     this.agentId = config.agentId;
@@ -122,6 +130,7 @@ export class MandateZClient {
     this.privateKey = config.privateKey;
     this.hibpApiKey = config.hibpApiKey ?? null;
     this.directoryUrl = (config.directoryUrl ?? DEFAULT_DIRECTORY_URL).replace(/\/+$/, '');
+    this.exporters = config.exporters ?? [];
     this.transport = new SupabaseTransport({
       supabaseUrl: config.supabaseUrl,
       supabaseAnonKey: config.supabaseAnonKey,
@@ -205,7 +214,23 @@ export class MandateZClient {
     // Fire-and-forget: recompute trust score in background
     this.recomputeTrustScore().catch(() => {});
 
+    // Fire-and-forget: fan out to every configured exporter in parallel.
+    // Exporter failures are logged but never block the main flow.
+    this.fanOutToExporters(emitted);
+
     return emitted;
+  }
+
+  private fanOutToExporters(event: AgentEvent): void {
+    if (this.exporters.length === 0) return;
+    for (const exporter of this.exporters) {
+      // Each exporter runs independently; one failing cannot affect another.
+      exporter.export(event).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        // eslint-disable-next-line no-console
+        console.warn(`[mandatez] exporter "${exporter.name}" failed: ${message}`);
+      });
+    }
   }
 
   /**

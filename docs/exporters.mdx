@@ -1,0 +1,158 @@
+---
+title: "Event Exporters"
+description: "Stream MandateZ agent events into Datadog, Splunk, any OpenTelemetry collector, or a custom webhook."
+---
+
+# Event Exporters
+
+MandateZ's event stream is the spine. Exporters fan every signed `AgentEvent` out to your existing observability or SIEM stack so security, compliance, and SRE teams see the same signal in the tools they already use.
+
+## How Exporters Work
+
+Every exporter implements one interface:
+
+```typescript
+interface EventExporter {
+  name: string;
+  export(event: AgentEvent): Promise<void>;
+}
+```
+
+Pass one or more exporters to `MandateZClient`:
+
+```typescript
+import { MandateZClient, DatadogExporter, WebhookExporter } from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  agentId: '...',
+  ownerId: '...',
+  privateKey: '...',
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  exporters: [
+    new DatadogExporter({ apiKey: process.env.DD_API_KEY! }),
+    new WebhookExporter({ url: 'https://your-siem.com/mandatez' }),
+  ],
+});
+```
+
+After every `client.track()` call, MandateZ signs and stores the event in the canonical stream **and** fans it out to every configured exporter in parallel. Exporters are fire-and-forget — a failing exporter logs a warning but never blocks or throws from `track()`. This is by design: agents must not stall waiting on a downstream log sink.
+
+## Datadog Exporter
+
+Ships each event to the Datadog Logs v2 HTTP intake with MandateZ-specific tags pre-applied.
+
+```typescript
+import { DatadogExporter } from '@mandatez/sdk';
+
+new DatadogExporter({
+  apiKey: process.env.DD_API_KEY!,   // required
+  site: 'datadoghq.com',             // optional — use datadoghq.eu, us3.datadoghq.com, etc.
+  service: 'my-agents',              // optional — defaults to 'mandatez'
+  source: 'mandatez-sdk',            // optional
+  tags: ['env:prod', 'team:security'], // merged into every event
+});
+```
+
+**What shows up in Datadog:**
+- `ddsource = mandatez-sdk`
+- Status: `error` for blocked, `warn` for flagged, `info` otherwise
+- Tags: `agent_id`, `owner_id`, `outcome`, `action_type` + your extras
+- Full event body nested under `mandatez.*` so you can facet on `@mandatez.resource`, `@mandatez.policy_id`, etc.
+
+## Splunk Exporter
+
+Posts each event to Splunk HTTP Event Collector (HEC).
+
+```typescript
+import { SplunkExporter } from '@mandatez/sdk';
+
+new SplunkExporter({
+  hecUrl: 'https://splunk.acme.com:8088',   // required — base URL, no /services/collector
+  token: process.env.SPLUNK_HEC_TOKEN!,     // required
+  source: 'mandatez',                        // optional
+  sourcetype: 'mandatez:event',              // optional
+  index: 'agents',                           // optional — defaults to 'main'
+});
+```
+
+The `Authorization: Splunk <token>` header is set automatically. Each event is wrapped with a Splunk event envelope (`time`, `host`, `source`, `sourcetype`, `index`, `event`) — the inner `event` object carries the full signed AgentEvent.
+
+## OpenTelemetry Exporter
+
+Formats each event as an OTLP/HTTP span and ships it to any OpenTelemetry collector (Grafana Tempo, Honeycomb, New Relic, Jaeger, AWS ADOT, etc.).
+
+```typescript
+import { OpenTelemetryExporter } from '@mandatez/sdk';
+
+new OpenTelemetryExporter({
+  endpoint: 'http://otel-collector:4318',    // required — /v1/traces is appended automatically
+  serviceName: 'mandatez',                    // optional — defaults to 'mandatez'
+  resourceAttributes: { 'deployment.environment': 'production' },
+  headers: { Authorization: 'Bearer ...' },   // for Honeycomb/NR/etc. auth
+});
+```
+
+Each event becomes a zero-duration span named `mandatez.<action_type>` with the full event serialized as span attributes. Status maps to OTel semantics:
+
+| MandateZ outcome | OTel status code |
+|---|---|
+| `blocked` | ERROR (2) |
+| `flagged` | ERROR (2) |
+| `allowed`, `pending_approval` | OK (1) |
+
+No `@opentelemetry/*` dependency is pulled into the SDK — the exporter emits the wire-level OTLP/HTTP JSON directly, keeping your bundle lean.
+
+## Webhook Exporter
+
+Generic POST of the signed event to any HTTPS URL. Useful when your SIEM or internal log pipeline doesn't have a first-class exporter yet.
+
+```typescript
+import { WebhookExporter } from '@mandatez/sdk';
+
+new WebhookExporter({
+  url: 'https://your-siem.com/mandatez',     // required
+  secret: process.env.WEBHOOK_SECRET,         // optional — sent as Authorization: Bearer <secret>
+  headers: { 'X-Tenant-Id': 'acme' },         // optional extras
+  timeoutMs: 5000,                             // optional — default 5000
+});
+```
+
+The payload is the full `AgentEvent` shape, unmodified. Never rename fields on the receiving side — this is the canonical cross-vendor envelope.
+
+## Writing a Custom Exporter
+
+Any object matching `EventExporter` drops into the `exporters: [...]` array.
+
+```typescript
+import type { EventExporter, AgentEvent } from '@mandatez/sdk';
+
+class ElasticExporter implements EventExporter {
+  readonly name = 'elastic';
+  constructor(private url: string, private apiKey: string) {}
+
+  async export(event: AgentEvent): Promise<void> {
+    await fetch(`${this.url}/mandatez-events/_doc`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `ApiKey ${this.apiKey}`,
+      },
+      body: JSON.stringify(event),
+    });
+  }
+}
+```
+
+## Guarantees
+
+- **Fan-out is parallel** — one slow exporter cannot delay another.
+- **Fan-out is fire-and-forget** — `track()` never awaits exporter completion, and a thrown exporter error is caught and logged as a warning.
+- **No duplication** — the MandateZ stream remains the source of truth. Exporters are cache invalidation, not persistence.
+- **Every event is signed before export** — downstream systems receive a tamper-evident envelope with the agent's public key inline for verification.
+
+---
+
+<Card title="Get Started" icon="rocket" href="/quickstart">
+  Stand up MandateZ and wire your first exporter in under five minutes.
+</Card>

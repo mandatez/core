@@ -15,6 +15,9 @@ export { PolicyEngine } from './policy/index.js';
 export { PolicyRuleSchema, PolicySchema } from './policy/index.js';
 export type { PolicyRule, Policy, PolicyOutcome, PolicyEvaluation } from './policy/index.js';
 
+export { POLICY_TEMPLATES, POLICY_TEMPLATE_LIST, findTemplate } from './policies/templates.js';
+export type { PolicyTemplate, PolicyTemplateKey } from './policies/templates.js';
+
 export { OversightGate, SlackAlertChannel, WebhookAlertChannel } from './oversight/index.js';
 export type { OversightConfig, OversightResult, AlertChannel, OversightAlert, TimeoutAction, ApprovalDecision } from './oversight/index.js';
 
@@ -43,3 +46,17 @@ export { MandateZAgent } from './wrapper/index.js';
 export type { MandateZAgentConfig } from './wrapper/index.js';
 
 export { withMandateZ } from './integrations/langchain/decorator.js';
+
+export {
+  DatadogExporter,
+  SplunkExporter,
+  WebhookExporter,
+  OpenTelemetryExporter,
+} from './exporters/index.js';
+export type {
+  EventExporter,
+  DatadogExporterConfig,
+  SplunkExporterConfig,
+  WebhookExporterConfig,
+  OpenTelemetryExporterConfig,
+} from './exporters/index.js';

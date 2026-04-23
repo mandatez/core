@@ -37,7 +37,7 @@
     },
     {
       "group": "SDK Reference",
-      "pages": ["sdk/track"]
+      "pages": ["sdk/track", "exporters"]
     },
     {
       "group": "Trust & Security",
