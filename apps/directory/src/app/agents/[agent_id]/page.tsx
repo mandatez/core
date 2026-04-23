@@ -212,6 +212,23 @@ export default async function AgentProfilePage(
         </div>
       </div>
 
+      {/* View all events */}
+      <div className="border border-gray-800 rounded-lg p-4 flex items-center justify-between gap-3">
+        <div className="text-sm">
+          <div className="text-gray-200 font-medium">Full audit trail</div>
+          <div className="text-gray-500 text-xs mt-0.5">
+            {totalEvents.toLocaleString()} signed event{totalEvents === 1 ? '' : 's'}{' '}
+            across {activeDays} day{activeDays === 1 ? '' : 's'} of activity
+          </div>
+        </div>
+        <a
+          href={`${dashboardUrl}/search?agent_id=${encodeURIComponent(a.id)}&owner_id=${encodeURIComponent(a.owner_id)}`}
+          className="shrink-0 text-xs px-3 py-1.5 rounded border border-gray-700 hover:border-gray-500 text-gray-200 hover:text-white transition-colors"
+        >
+          View all events for this agent →
+        </a>
+      </div>
+
       {/* Timeline */}
       <div className="border border-gray-800 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-white mb-3">Timeline</h3>

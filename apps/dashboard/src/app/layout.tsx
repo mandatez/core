@@ -3,6 +3,7 @@ import Link from 'next/link';
 import './globals.css';
 import { ShadowScanNavLink } from '@/components/shadow-scan-nav-link';
 import { OrgSwitcher } from '@/components/org-switcher';
+import { QuickSearchButton } from '@/components/quick-search-button';
 
 export const metadata: Metadata = {
   title: 'MandateZ Dashboard',
@@ -61,7 +62,10 @@ export default function RootLayout({
                 Pricing
               </Link>
             </div>
-            <OrgSwitcher />
+            <div className="ml-auto flex items-center gap-4">
+              <QuickSearchButton />
+              <OrgSwitcher />
+            </div>
           </div>
         </nav>
         <main className="max-w-7xl mx-auto px-6 py-8">
