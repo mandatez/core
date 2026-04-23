@@ -87,6 +87,10 @@ out
 .nuxt
 dist
 
+# GitHub Action bundle must be committed — GitHub runs it from the repo, not npm.
+!packages/github-action/dist/
+!packages/github-action/dist/**
+
 # Gatsby files
 .cache/
 # Comment in the public line in if your project uses Gatsby and not Next.js

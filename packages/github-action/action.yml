@@ -1,0 +1,38 @@
+name: 'MandateZ Agent Security Scan'
+description: 'Find ungoverned AI agents in your repo before they ship'
+author: 'MandateZ'
+branding:
+  icon: 'shield'
+  color: 'blue'
+inputs:
+  owner-id:
+    description: 'Your MandateZ owner ID. Agents registered under this ID are cross-referenced and marked as governed.'
+    required: false
+  fail-on-critical:
+    description: 'Fail the workflow if critical-risk ungoverned agents are found.'
+    required: false
+    default: 'true'
+  dashboard-url:
+    description: 'MandateZ dashboard URL used for the /api/shadow-scan endpoint and register links.'
+    required: false
+    default: 'https://core-dashboard-black.vercel.app'
+  github-token:
+    description: 'Token used to post the findings as a PR comment. Defaults to the workflow-scoped GITHUB_TOKEN.'
+    required: false
+    default: ${{ github.token }}
+  comment-on-pr:
+    description: 'Post a summary comment on pull requests.'
+    required: false
+    default: 'true'
+outputs:
+  risk_score:
+    description: 'Shadow agent risk score from 0 (safe) to 100 (severe exposure).'
+  total_discovered:
+    description: 'Total number of AI agents detected in .github/workflows.'
+  unregistered:
+    description: 'Number of detected agents not registered with MandateZ.'
+  critical_risk:
+    description: 'Number of ungoverned agents with critical risk level.'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

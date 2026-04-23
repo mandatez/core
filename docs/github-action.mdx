@@ -1,0 +1,107 @@
+---
+title: "MandateZ GitHub Action — CI/CD Governance"
+description: "Scan every pull request for ungoverned AI agents. Block deploys before a shadow LangChain, CrewAI, AutoGen, or raw OpenAI call reaches production."
+---
+
+# MandateZ GitHub Action — CI/CD Governance
+
+The MandateZ GitHub Action turns every `git push` into a checkpoint. It walks `.github/workflows/` on each commit, detects AI-agent footprint, cross-references the finding against agents registered under your MandateZ owner ID, and fails the build if an ungoverned critical-risk agent tries to ship.
+
+One workflow file, one commit — every repo that installs it becomes a MandateZ touchpoint.
+
+## Install
+
+Create `.github/workflows/mandatez-scan.yml` in your repo:
+
+```yaml
+name: MandateZ Agent Scan
+on: [push, pull_request]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mandatez/agent-scan@v1
+        with:
+          owner-id: ${{ secrets.MANDATEZ_OWNER_ID }}
+          fail-on-critical: 'true'
+```
+
+Set `MANDATEZ_OWNER_ID` in your repo's **Settings → Secrets and variables → Actions** so agents registered under your account get matched on every run.
+
+## What it detects
+
+The scanner combines **framework detection**, **secret exposure**, and **permission blast-radius** signals.
+
+| Signal | Matches | Risk if ungoverned |
+|---|---|---|
+| Framework import | `langchain`, `langgraph`, `crewai`, `autogen`, `llama_index`, Anthropic / OpenAI SDKs | High |
+| LLM API key in `env:` | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `COHERE_API_KEY`, `LANGCHAIN_API_KEY`, `REPLICATE_API_TOKEN` | Critical |
+| Broad permissions | `permissions: write-all`, `read-all`, `*` | Medium |
+| `@mandatez/sdk` / `MandateZClient` / `MandateZAgent` | — | Already governed ✅ |
+
+If a file has both a framework and a raw API key exposed in `env:` without a MandateZ wrapper, it's scored **critical** and (by default) fails the workflow.
+
+## Inputs
+
+<ResponseField name="owner-id" type="string">
+  Your MandateZ owner ID. Agents registered under this ID are marked as governed after cross-reference. Source from a secret, not literal text.
+</ResponseField>
+
+<ResponseField name="fail-on-critical" type="boolean" default="true">
+  Fail the workflow when at least one ungoverned critical-risk agent is found. Set to `false` to make the scan advisory-only during rollout.
+</ResponseField>
+
+<ResponseField name="dashboard-url" type="string" default="https://core-dashboard-black.vercel.app">
+  MandateZ dashboard base URL. The action POSTs findings to `${dashboard-url}/api/shadow-scan` and uses it for register links in the PR comment.
+</ResponseField>
+
+<ResponseField name="comment-on-pr" type="boolean" default="true">
+  Post a sticky summary comment on pull requests (updates in place on re-runs).
+</ResponseField>
+
+<ResponseField name="github-token" type="string" default="${{ github.token }}">
+  Token used to post the PR comment.
+</ResponseField>
+
+## Outputs
+
+| Output | Description |
+|---|---|
+| `risk_score` | 0–100 overall shadow-agent risk. |
+| `total_discovered` | Total AI agents found across all workflow files. |
+| `unregistered` | Count of agents not governed by MandateZ. |
+| `critical_risk` | Count of ungoverned critical-risk agents. |
+
+Gate a deployment step on the score:
+
+```yaml
+- uses: mandatez/agent-scan@v1
+  id: scan
+- name: Deploy
+  if: ${{ steps.scan.outputs.risk_score < 25 }}
+  run: ./deploy.sh
+```
+
+## Pull-request comment
+
+On every PR, the action posts a sticky comment with the headline risk score, a table of each detected agent (location, framework, risk, governed status), and a one-click link to register the ungoverned ones. Subsequent runs edit the same comment — no pile-up.
+
+The action uses `<!-- mandatez-agent-scan -->` as an idempotency marker, so you can re-run without spamming the thread.
+
+## Failure modes
+
+- **Dashboard unreachable.** The action falls back to local risk scoring using the same formula as the server. Outputs and PR comment still publish; only cross-referencing against your registered agents is skipped.
+- **`owner-id` not set.** Detection still runs. Every detected agent is treated as ungoverned since we can't match against a known agent registry.
+- **No `.github/workflows/` directory.** The action reports zero discovered and exits clean.
+
+## Blast-radius — why this matters
+
+ASI-02 (Tool Misuse) and ASI-03 (Identity Abuse) in the [OWASP Agentic Top 10](/owasp-compliance) both start the same way: an agent you didn't know you had. A LangChain workflow runs on `main`, an AutoGen crew fires at 3am, an invoice-processing bot with `OPENAI_API_KEY` in plaintext YAML.
+
+The action catches all three at the PR stage, before they reach your production environment. Every call goes through `@mandatez/sdk` or the workflow doesn't merge.
+
+## Source
+
+Source lives in [`packages/github-action/`](https://github.com/mandatez/core/tree/main/packages/github-action) of the MandateZ monorepo. The Marketplace-facing repo is `mandatez/agent-scan` (see README for the manual publish step).

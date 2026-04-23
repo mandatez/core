@@ -39,6 +39,15 @@ interface ShadowScanRequest {
     supabase_url?: string;
     n8n_webhook?: string;
   };
+  /**
+   * Pre-scanned agents from a trusted client (e.g. the MandateZ GitHub Action
+   * running inside CI with repo checkout access). When provided, server-side
+   * scanning is skipped and these findings feed directly into cross-reference
+   * + risk scoring. Caller is responsible for the authoritative detection.
+   */
+  pre_scanned_agents?: DiscoveredAgent[];
+  /** Optional free-form tag to label where the scan came from (e.g. 'github-action'). */
+  source?: string;
 }
 
 const LLM_PATTERNS = [
@@ -299,6 +308,12 @@ export async function POST(request: NextRequest) {
 
   let discovered: DiscoveredAgent[] = [];
   let mode: 'authenticated' | 'demo' = 'demo';
+
+  if (Array.isArray(body.pre_scanned_agents) && body.pre_scanned_agents.length > 0) {
+    discovered.push(...body.pre_scanned_agents);
+    scannedTargets.push(body.source?.trim() || 'pre-scanned');
+    mode = 'authenticated';
+  }
 
   if (targets.github_token) {
     try {

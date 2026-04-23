@@ -33,7 +33,7 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["introduction", "quickstart", "proxy-mode"]
+      "pages": ["introduction", "quickstart", "proxy-mode", "github-action"]
     },
     {
       "group": "SDK Reference",

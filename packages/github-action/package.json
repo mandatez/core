@@ -1,0 +1,35 @@
+{
+  "name": "@mandatez/github-action",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MandateZ GitHub Action — scans repos in CI/CD for ungoverned AI agents and blocks deployment if found.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
+    "build:check": "tsc --noEmit",
+    "dev": "ncc build src/index.ts -o dist --watch"
+  },
+  "keywords": [
+    "github-action",
+    "ai-agents",
+    "security",
+    "compliance",
+    "mandatez",
+    "shadow-agents"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mandatez/core",
+    "directory": "packages/github-action"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@vercel/ncc": "^0.38.1",
+    "typescript": "^5.4.5"
+  }
+}
