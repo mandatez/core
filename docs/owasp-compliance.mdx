@@ -53,7 +53,9 @@ Each row is a concrete, testable control. The sections below show the exact code
 
 **Control:** Least-privilege policy rules evaluated before any action executes. Default-deny catches anything not explicitly allowed.
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { MandateZClient, generateAgentIdentity } from '@mandatez/sdk';
 
 const identity = await generateAgentIdentity();
@@ -75,6 +77,39 @@ const client = new MandateZClient({
   }],
 });
 ```
+
+```python Python
+import os
+from mandatez import (
+    MandateZClient, Policy, PolicyRule, generate_agent_identity,
+)
+
+identity = generate_agent_identity()
+
+client = MandateZClient(
+    agent_id=identity.agent_id,
+    owner_id="your_org_id",
+    private_key=identity.private_key,
+    supabase_url=os.environ["SUPABASE_URL"],
+    supabase_anon_key=os.environ["SUPABASE_ANON_KEY"],
+    policies=[
+        Policy(
+            id="pol_asi01",
+            owner_id="your_org_id",
+            name="Least Privilege",
+            rules=[
+                PolicyRule(id="r1", action_types=["read"],
+                           resource_pattern="tickets/*", effect="allow"),
+                PolicyRule(id="r_deny",
+                           action_types=["read", "write", "delete", "export", "call", "payment"],
+                           resource_pattern="*", effect="block"),
+            ],
+        ),
+    ],
+)
+```
+
+</CodeGroup>
 
 See [ASI-01: Excessive Agency](/owasp-asi01) for the full pattern.
 
@@ -100,7 +135,9 @@ See [ASI-02: Insufficient Authorization](/owasp-asi02).
 
 **Control:** Every agent holds a unique Ed25519 private key. Every event is signed. Stolen tokens are useless without the key, and the key never leaves the agent runtime.
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { generateAgentIdentity, verifyEvent } from '@mandatez/sdk';
 
 const identity = await generateAgentIdentity();
@@ -113,6 +150,22 @@ const event = await client.track({
 
 const valid = await verifyEvent(event); // cryptographic verification, no shared secret
 ```
+
+```python Python
+from mandatez import generate_agent_identity, verify_event
+
+identity = generate_agent_identity()
+# identity.private_key stays in the agent's secret manager
+
+event = await client.track(action_type="read", resource="tickets/T-4521")
+
+valid = verify_event(event.to_dict())  # cryptographic verification, no shared secret
+```
+
+</CodeGroup>
+
+Python-signed events and TypeScript-signed events are byte-identical —
+the canonical form and Ed25519 algorithm are shared across both SDKs.
 
 See [ASI-03: Identity Abuse](/owasp-asi03).
 

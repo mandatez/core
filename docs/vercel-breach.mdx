@@ -59,7 +59,9 @@ See the full [OWASP Agentic Top 10 Compliance](/owasp-compliance) mapping for ho
 
 MandateZ policies evaluate before any action executes. A least-privilege policy on the indexing agent would have refused Stage 1 outright.
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { MandateZClient, generateAgentIdentity } from '@mandatez/sdk';
 
 const identity = await generateAgentIdentity();
@@ -108,6 +110,62 @@ const attempted = await client.track({
 console.log(attempted.outcome);   // 'blocked'
 console.log(attempted.policy_id); // 'pol_indexing_agent'
 ```
+
+```python Python
+import os
+from mandatez import (
+    MandateZClient, Policy, PolicyRule, generate_agent_identity,
+)
+
+identity = generate_agent_identity()
+
+client = MandateZClient(
+    agent_id=identity.agent_id,
+    owner_id="context_ai_org",
+    private_key=identity.private_key,
+    supabase_url=os.environ["SUPABASE_URL"],
+    supabase_anon_key=os.environ["SUPABASE_ANON_KEY"],
+    policies=[
+        Policy(
+            id="pol_indexing_agent",
+            owner_id="context_ai_org",
+            name="Indexing Agent — Least Privilege",
+            rules=[
+                # Allowed: read deployment metadata for the installed project
+                PolicyRule(id="r1", action_types=["read"],
+                           resource_pattern="vercel/projects/proj_installed/deployments/*",
+                           effect="allow"),
+                # Allowed: read build logs for the installed project
+                PolicyRule(id="r2", action_types=["read"],
+                           resource_pattern="vercel/projects/proj_installed/logs/*",
+                           effect="allow"),
+                # Blocked: env variable access is never in scope for an indexer
+                PolicyRule(id="r3", action_types=["read", "export"],
+                           resource_pattern="vercel/**/env/*",
+                           effect="block"),
+                # Flagged: any read outside the installed project
+                PolicyRule(id="r4", action_types=["read"],
+                           resource_pattern="vercel/projects/*",
+                           effect="flag"),
+                # Default deny
+                PolicyRule(id="r5",
+                           action_types=["read", "write", "delete", "export", "call", "payment"],
+                           resource_pattern="*", effect="block"),
+            ],
+        ),
+    ],
+)
+
+# Stage 2 attack replayed against this client:
+attempted = await client.track(
+    action_type="read",
+    resource="vercel/projects/proj_unrelated_customer/env/DATABASE_URL",
+)
+print(attempted.outcome)    # 'blocked'
+print(attempted.policy_id)  # 'pol_indexing_agent'
+```
+
+</CodeGroup>
 
 Three things close the incident:
 
@@ -171,24 +229,45 @@ If you run any agent today — an indexing bot, a support agent, a deployment we
 
 ### Step 1 — Install
 
-```bash
+<CodeGroup>
+
+```bash TypeScript
 npm install @mandatez/sdk
 ```
 
+```bash Python
+pip install mandatez
+```
+
+</CodeGroup>
+
 ### Step 2 — Generate the Agent's Identity
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { generateAgentIdentity } from '@mandatez/sdk';
 
 const identity = await generateAgentIdentity();
 // Store identity.private_key in your secret manager. This agent only.
 ```
 
+```python Python
+from mandatez import generate_agent_identity
+
+identity = generate_agent_identity()
+# Store identity.private_key in your secret manager. This agent only.
+```
+
+</CodeGroup>
+
 One agent, one keypair. That is what makes revocation surgical.
 
 ### Step 3 — Wire the Client with a Least-Privilege Policy
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { MandateZClient } from '@mandatez/sdk';
 
 const client = new MandateZClient({
@@ -217,9 +296,44 @@ const client = new MandateZClient({
 });
 ```
 
+```python Python
+import os
+from mandatez import MandateZClient, Policy, PolicyRule
+
+client = MandateZClient(
+    agent_id=identity.agent_id,
+    owner_id="your_org_id",
+    private_key=identity.private_key,
+    supabase_url=os.environ["SUPABASE_URL"],
+    supabase_anon_key=os.environ["SUPABASE_ANON_KEY"],
+    policies=[
+        Policy(
+            id="pol_default",
+            owner_id="your_org_id",
+            name="Production Default",
+            rules=[
+                PolicyRule(id="r1", action_types=["read"],
+                           resource_pattern="app/public/*", effect="allow"),
+                PolicyRule(id="r2", action_types=["export", "delete"],
+                           resource_pattern="*", effect="block"),
+                PolicyRule(id="r3", action_types=["payment", "write"],
+                           resource_pattern="*", effect="flag"),
+                PolicyRule(id="r4",
+                           action_types=["read", "write", "delete", "export", "call", "payment"],
+                           resource_pattern="*", effect="block"),
+            ],
+        ),
+    ],
+)
+```
+
+</CodeGroup>
+
 ### Step 4 — Replace Direct API Calls with `client.track()`
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 const event = await client.track({
   action_type: 'read',
   resource: 'vercel/projects/proj_x/deployments',
@@ -232,6 +346,27 @@ if (event.outcome !== 'allowed') {
 // Only now call the actual API.
 const data = await vercelApi.getDeployments('proj_x');
 ```
+
+```python Python
+event = await client.track(
+    action_type="read",
+    resource="vercel/projects/proj_x/deployments",
+)
+
+if event.outcome != "allowed":
+    raise RuntimeError(f"Action blocked by policy {event.policy_id}")
+
+# Only now call the actual API.
+data = await vercel_api.get_deployments("proj_x")
+```
+
+</CodeGroup>
+
+<Note>
+LangChain or CrewAI user? Drop in the integrations callback instead of
+wrapping calls manually — every tool call is tracked automatically.
+See the [Python SDK](/sdk/python) for the one-line setup.
+</Note>
 
 ### Step 5 — Watch the Dashboard
 

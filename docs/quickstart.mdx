@@ -5,17 +5,31 @@ description: Get MandateZ running in under 5 minutes
 
 # Quickstart
 
+MandateZ ships first-class SDKs for both TypeScript and Python. They produce
+byte-identical Ed25519 signatures, so an event signed from Python verifies
+cleanly from TypeScript and vice versa.
+
 ## Install
 
-```bash
+<CodeGroup>
+
+```bash TypeScript
 npm install @mandatez/sdk
 ```
+
+```bash Python
+pip install mandatez
+```
+
+</CodeGroup>
 
 ## 1. Generate an Agent Identity
 
 Every agent gets a unique ID and Ed25519 keypair:
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { generateAgentIdentity } from '@mandatez/sdk';
 
 const identity = await generateAgentIdentity();
@@ -24,11 +38,31 @@ const identity = await generateAgentIdentity();
 //   private_key: 'base64...' }
 ```
 
+```python Python
+from mandatez import generate_agent_identity
+
+identity = generate_agent_identity()
+# AgentIdentity(
+#   agent_id='ag_c065af93bcf9',
+#   public_key='base64...',
+#   private_key='hex...'
+# )
+```
+
+</CodeGroup>
+
+<Warning>
+Save `identity.private_key` in your secret manager immediately. It is not
+recoverable if lost. Never commit it to source control.
+</Warning>
+
 ## 2. Create a Client
 
 The client wires together signing, policy, and transport:
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { MandateZClient } from '@mandatez/sdk';
 
 const client = new MandateZClient({
@@ -40,11 +74,28 @@ const client = new MandateZClient({
 });
 ```
 
+```python Python
+import os
+from mandatez import MandateZClient
+
+client = MandateZClient(
+    agent_id=identity.agent_id,
+    owner_id="your_org_id",
+    private_key=identity.private_key,
+    supabase_url=os.environ["SUPABASE_URL"],
+    supabase_anon_key=os.environ["SUPABASE_ANON_KEY"],
+)
+```
+
+</CodeGroup>
+
 ## 3. Track an Action
 
 One method call — signed, validated, and emitted:
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 const event = await client.track({
   action_type: 'read',
   resource: 'emails',
@@ -55,11 +106,27 @@ console.log(event.outcome);   // 'allowed'
 console.log(event.signature); // Ed25519 signature
 ```
 
+```python Python
+import asyncio
+
+async def main():
+    event = await client.track(action_type="read", resource="emails")
+    print(event.event_id)  # UUID
+    print(event.outcome)   # 'allowed'
+    print(event.signature) # Ed25519 signature
+
+asyncio.run(main())
+```
+
+</CodeGroup>
+
 ## 4. Add a Policy (Optional)
 
 Block or flag actions before they execute:
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 const client = new MandateZClient({
   agentId: identity.agent_id,
   ownerId: 'your_org_id',
@@ -84,15 +151,95 @@ const blocked = await client.track({
 console.log(blocked.outcome); // 'blocked'
 ```
 
+```python Python
+from mandatez import MandateZClient, Policy, PolicyRule
+
+client = MandateZClient(
+    agent_id=identity.agent_id,
+    owner_id="your_org_id",
+    private_key=identity.private_key,
+    supabase_url=os.environ["SUPABASE_URL"],
+    supabase_anon_key=os.environ["SUPABASE_ANON_KEY"],
+    policies=[
+        Policy(
+            id="pol_prod",
+            owner_id="your_org_id",
+            name="Production",
+            rules=[
+                PolicyRule(id="r1", action_types=["export", "delete"],
+                           resource_pattern="*", effect="block"),
+                PolicyRule(id="r2", action_types=["payment"],
+                           resource_pattern="api/*", effect="flag"),
+            ],
+        ),
+    ],
+)
+
+blocked = await client.track(action_type="export", resource="customer_data")
+print(blocked.outcome)  # 'blocked'
+```
+
+</CodeGroup>
+
 ## 5. Verify an Event
 
 Anyone with the public key can verify the signature:
 
-```typescript
+<CodeGroup>
+
+```typescript TypeScript
 import { verifyEvent } from '@mandatez/sdk';
 
 const valid = await verifyEvent(event);
 console.log(valid); // true
+```
+
+```python Python
+from mandatez import verify_event
+
+valid = verify_event(event.to_dict())
+print(valid)  # True
+```
+
+</CodeGroup>
+
+## Python: Framework Integrations
+
+The Python SDK ships with callbacks for the two most popular agent frameworks:
+
+<CodeGroup>
+
+```python LangChain
+from langchain_openai import ChatOpenAI
+from mandatez import MandateZClient
+from mandatez.integrations.langchain import MandateZCallbackHandler
+
+client = MandateZClient(...)
+llm = ChatOpenAI(callbacks=[MandateZCallbackHandler(client)])
+# every tool call is now a signed event
+```
+
+```python CrewAI
+from crewai import Task, Crew
+from mandatez import MandateZClient
+from mandatez.integrations.crewai import governed_agent
+
+client = MandateZClient(...)
+analyst = governed_agent(
+    mandatez_client=client,
+    role="Market Analyst",
+    goal="Research market trends",
+    backstory="A seasoned analyst with 10 years of experience.",
+)
+```
+
+</CodeGroup>
+
+Install the matching extra once:
+
+```bash
+pip install "mandatez[langchain]"
+pip install "mandatez[crewai]"
 ```
 
 ## Next Steps
