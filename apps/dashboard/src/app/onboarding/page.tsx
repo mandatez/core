@@ -11,7 +11,6 @@ type Framework =
   | 'OpenAI SDK'
   | 'Other';
 type Environment = 'production' | 'staging' | 'development';
-type PresetId = 'strict' | 'standard' | 'observe';
 
 interface AgentResponse {
   agent_id: string;
@@ -23,17 +22,21 @@ interface AgentResponse {
   private_key: string;
 }
 
-interface PolicyRule {
-  action_type: string;
-  resource: string;
-  outcome: 'allowed' | 'blocked' | 'flagged';
+type Effect = 'allow' | 'block' | 'flag';
+
+interface TemplateRule {
+  action_types: string[];
+  resource_pattern: string;
+  effect: Effect;
 }
 
-interface PolicyPreset {
-  id: PresetId;
+interface PolicyTemplate {
+  key: string;
+  id: string;
   name: string;
   description: string;
-  rules: PolicyRule[];
+  rule_count: number;
+  rules: TemplateRule[];
 }
 
 const FRAMEWORKS: Framework[] = [
@@ -53,17 +56,23 @@ const STEP_LABELS = [
   'Done',
 ] as const;
 
-const OUTCOME_STYLE: Record<PolicyRule['outcome'], string> = {
-  allowed: 'text-green-400',
-  blocked: 'text-red-400',
-  flagged: 'text-amber-400',
+const EFFECT_STYLE: Record<Effect, string> = {
+  allow: 'text-green-400',
+  block: 'text-red-400',
+  flag: 'text-amber-400',
+};
+
+const EFFECT_LABEL: Record<Effect, string> = {
+  allow: 'ALLOW',
+  block: 'BLOCK',
+  flag: 'FLAG',
 };
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [ownerId, setOwnerId] = useState('');
-  const [presets, setPresets] = useState<PolicyPreset[]>([]);
-  const [selectedPreset, setSelectedPreset] = useState<PresetId>('strict');
+  const [templates, setTemplates] = useState<PolicyTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('hipaa_healthcare');
 
   // Step 2 form state
   const [agentName, setAgentName] = useState('');
@@ -84,10 +93,10 @@ export default function OnboardingPage() {
         ? window.localStorage.getItem('mandatez_owner_id')
         : null;
     setOwnerId(stored ?? '');
-    fetch('/api/policies')
+    fetch('/api/policies/from-template')
       .then((r) => r.json())
-      .then((j: { presets?: PolicyPreset[] }) => {
-        if (j.presets) setPresets(j.presets);
+      .then((j: { templates?: PolicyTemplate[] }) => {
+        if (j.templates) setTemplates(j.templates);
       })
       .catch(() => {});
   }, []);
@@ -132,14 +141,14 @@ export default function OnboardingPage() {
     setPolicyError(null);
     setSavingPolicy(true);
     try {
-      const res = await fetch('/api/policies', {
+      const res = await fetch('/api/policies/from-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           owner_id: agent.owner_id,
           agent_id: agent.agent_id,
-          preset: selectedPreset,
-          name: `${agent.name} — ${selectedPreset}`,
+          template_id: selectedTemplate,
+          name: `${agent.name} — ${selectedTemplate}`,
         }),
       });
       const json = await res.json();
@@ -187,9 +196,9 @@ export default function OnboardingPage() {
         )}
         {step === 2 && agent && (
           <PolicyStep
-            presets={presets}
-            selected={selectedPreset}
-            onSelect={setSelectedPreset}
+            templates={templates}
+            selected={selectedTemplate}
+            onSelect={setSelectedTemplate}
             saving={savingPolicy}
             saved={policySaved}
             error={policyError}
@@ -464,7 +473,7 @@ function RegisterStep({
 /* ================================= Step 2 ================================= */
 
 function PolicyStep({
-  presets,
+  templates,
   selected,
   onSelect,
   saving,
@@ -473,76 +482,76 @@ function PolicyStep({
   onSave,
   onBack,
 }: {
-  presets: PolicyPreset[];
-  selected: PresetId;
-  onSelect: (p: PresetId) => void;
+  templates: PolicyTemplate[];
+  selected: string;
+  onSelect: (key: string) => void;
   saving: boolean;
   saved: boolean;
   error: string | null;
   onSave: () => void;
   onBack: () => void;
 }) {
-  const activePreset = presets.find((p) => p.id === selected);
+  const activeTemplate = templates.find((t) => t.key === selected);
 
   return (
     <StepShell
-      label="Step 3 · Configure Policy"
-      title="Choose a starting policy."
-      description="Policies are evaluated in real time before every action. You can edit or swap this later from the dashboard."
+      label="Step 3 · Pick a Policy Template"
+      title="Choose a starting template."
+      description="Templates are curated policy configurations for common agent use cases. Pick the closest match — you can edit the rules afterwards."
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        {presets.map((preset) => (
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {templates.map((template) => (
           <button
-            key={preset.id}
+            key={template.key}
             type="button"
-            onClick={() => onSelect(preset.id)}
+            onClick={() => onSelect(template.key)}
             className={`text-left rounded-md border p-4 transition-colors ${
-              selected === preset.id
+              selected === template.key
                 ? 'border-blue-500 bg-blue-500/5'
                 : 'border-gray-800 bg-gray-950/40 hover:border-gray-700'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-100">
-                {preset.name}
-                {preset.id === 'strict' && (
-                  <span className="ml-2 text-[9px] uppercase tracking-wider text-blue-300 font-mono">
-                    Recommended
-                  </span>
-                )}
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-sm font-medium text-gray-100 leading-snug">
+                {template.name}
               </span>
               <span
-                className={`h-4 w-4 rounded-full border ${
-                  selected === preset.id
+                className={`h-4 w-4 shrink-0 rounded-full border ${
+                  selected === template.key
                     ? 'border-blue-400 bg-blue-500'
                     : 'border-gray-700'
                 }`}
               />
             </div>
             <p className="mt-2 text-xs text-gray-500 leading-relaxed">
-              {preset.description}
+              {template.description}
             </p>
+            <div className="mt-3 text-[10px] font-mono uppercase tracking-wider text-gray-600">
+              {template.rule_count} rules · {template.id}
+            </div>
           </button>
         ))}
       </div>
 
-      {activePreset && (
+      {activeTemplate && (
         <div className="mt-6 rounded-md border border-gray-800 bg-black/40 p-4">
           <div className="text-xs font-mono uppercase tracking-wider text-gray-500 mb-3">
-            Rule preview — {activePreset.name}
+            Rule preview — {activeTemplate.name}
           </div>
           <div className="space-y-1 font-mono text-xs">
-            {activePreset.rules.map((rule, i) => (
-              <div key={i} className="flex gap-3">
+            {activeTemplate.rules.map((rule, i) => (
+              <div key={i} className="flex gap-3 items-start">
                 <span
-                  className={`uppercase tracking-wide w-20 shrink-0 ${OUTCOME_STYLE[rule.outcome]}`}
+                  className={`w-14 shrink-0 font-semibold ${EFFECT_STYLE[rule.effect]}`}
                 >
-                  {rule.outcome}
+                  {EFFECT_LABEL[rule.effect]}
                 </span>
-                <span className="text-gray-500 w-20 shrink-0">
-                  {rule.action_type}
+                <span className="text-gray-500 w-32 shrink-0 truncate">
+                  {rule.action_types.join(',')}
                 </span>
-                <span className="text-gray-300 truncate">{rule.resource}</span>
+                <span className="text-gray-300 truncate">
+                  {rule.resource_pattern}
+                </span>
               </div>
             ))}
           </div>
@@ -562,7 +571,7 @@ function PolicyStep({
 
       <StepFooter>
         <SecondaryButton onClick={onBack}>← Back</SecondaryButton>
-        <PrimaryButton onClick={onSave} disabled={saving || !activePreset}>
+        <PrimaryButton onClick={onSave} disabled={saving || !activeTemplate}>
           {saving ? 'Saving…' : 'Save policy'}
         </PrimaryButton>
       </StepFooter>

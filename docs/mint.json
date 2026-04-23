@@ -37,7 +37,7 @@
     },
     {
       "group": "SDK Reference",
-      "pages": ["sdk/track", "batch-ingestion", "exporters"]
+      "pages": ["sdk/track", "batch-ingestion", "policy-templates", "exporters"]
     },
     {
       "group": "Trust & Security",

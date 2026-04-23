@@ -1,0 +1,171 @@
+---
+title: Policy Templates
+description: Pre-built MandateZ policy configurations for common agent use cases.
+---
+
+Policy Templates are curated, opinionated policy configurations for the most common AI agent use cases. Pick the one that matches what your agent does, apply it to an agent, and ship. Templates are a starting point — every rule can be edited once applied.
+
+All templates are exported from `@mandatez/sdk` and available in the dashboard at [**Templates**](https://core-dashboard-black.vercel.app/policies/templates).
+
+## Usage
+
+```typescript
+import { MandateZClient, POLICY_TEMPLATES } from '@mandatez/sdk';
+
+const template = POLICY_TEMPLATES.hipaa_healthcare;
+
+const client = new MandateZClient({
+  agentId: 'ag_...',
+  ownerId: 'your_owner_id',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  policies: [
+    {
+      id: template.id,
+      owner_id: 'your_owner_id',
+      name: template.name,
+      rules: [...template.rules],
+    },
+  ],
+});
+```
+
+Or apply one from the dashboard via the API:
+
+```bash
+curl -X POST https://core-dashboard-black.vercel.app/api/policies/from-template \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "owner_id": "your_owner_id",
+    "template_id": "hipaa_healthcare",
+    "agent_id": "ag_..."
+  }'
+```
+
+## How rules are evaluated
+
+Rules are evaluated **in order — first match wins.** Each template ends with a catch-all block rule, so any action not explicitly allowed or flagged by an earlier rule is denied. This is a safe default: the agent can only do what the template says it can do.
+
+Effects:
+- `allow` — action proceeds, logged as `allowed`
+- `flag` — action proceeds but is logged as `flagged`; if you pair it with an oversight gate, it requires human approval
+- `block` — action is prevented, logged as `blocked`
+
+## The 6 Templates
+
+### HIPAA Healthcare Agent — `hipaa_healthcare` / `tpl_hipaa`
+
+For agents handling Protected Health Information. Blocks export and delete outright, flags all writes to PHI for review, and only explicitly allows reads against PHI resources.
+
+| Effect | Actions | Resource |
+| --- | --- | --- |
+| `block` | export | `*` |
+| `block` | delete | `*` |
+| `flag` | write | `phi/*` |
+| `allow` | read | `phi/*` |
+| `block` | all | `*` |
+
+**Use for:** clinical decision support, patient chart summarizers, claims agents.
+
+---
+
+### Fintech Payments Agent — `fintech_payments` / `tpl_fintech`
+
+For agents that touch money. Every `payment` action is flagged for human approval, deletes are blocked, customer data exports are flagged, customer reads are allowed.
+
+| Effect | Actions | Resource |
+| --- | --- | --- |
+| `flag` | payment | `*` |
+| `block` | delete | `*` |
+| `flag` | export | `customer/*` |
+| `allow` | read | `customer/*` |
+| `block` | all | `*` |
+
+**Use for:** invoice processors, reimbursement bots, any agent wired to Stripe / ACH / card rails.
+
+---
+
+### Customer Support Agent — `customer_support` / `tpl_support`
+
+For agents that respond to tickets. Read-only on customer data, write access scoped to tickets, everything else blocked.
+
+| Effect | Actions | Resource |
+| --- | --- | --- |
+| `allow` | read | `customers/*` |
+| `allow` | read | `tickets/*` |
+| `allow` | write | `tickets/*` |
+| `block` | delete | `*` |
+| `block` | export | `*` |
+| `block` | all | `*` |
+
+**Use for:** Zendesk/Intercom/Front automation, internal help-desk agents.
+
+---
+
+### Code Assistant Agent — `code_assistant` / `tpl_code`
+
+For agents that review or generate code. Read repositories, open pull requests, hit GitHub APIs — but deploys need approval and deletes are blocked.
+
+| Effect | Actions | Resource |
+| --- | --- | --- |
+| `allow` | read | `repo/*` |
+| `allow` | write | `repo/pull-requests/*` |
+| `allow` | call | `github/*` |
+| `flag` | call | `deploy/*` |
+| `block` | delete | `*` |
+| `block` | all | `*` |
+
+**Use for:** PR reviewers, code generation agents, linters and refactor bots.
+
+---
+
+### Data Analyst Agent — `data_analyst` / `tpl_analyst`
+
+For agents running queries on data warehouses. Read and query freely, but exports require approval and writes/deletes are blocked.
+
+| Effect | Actions | Resource |
+| --- | --- | --- |
+| `allow` | read | `warehouse/*` |
+| `allow` | call | `warehouse/query/*` |
+| `flag` | export | `*` |
+| `block` | write, delete | `*` |
+| `block` | all | `*` |
+
+**Use for:** Snowflake/BigQuery/Redshift analysts, dashboard data generators.
+
+---
+
+### Sales Outbound Agent — `sales_outbound` / `tpl_sales`
+
+For agents running cold outreach. Write contacts freely, send emails with approval, no exports, no deletes.
+
+| Effect | Actions | Resource |
+| --- | --- | --- |
+| `allow` | read | `crm/*` |
+| `allow` | write | `crm/contacts/*` |
+| `flag` | call | `email/send` |
+| `block` | export | `*` |
+| `block` | delete | `*` |
+| `block` | all | `*` |
+
+**Use for:** cold-email agents, CRM enrichers, outbound SDR bots.
+
+---
+
+## Choosing a template
+
+If none fit exactly, pick the closest match and edit its rules after applying. You can always fall back to writing policy rules from scratch — templates are convenience, not a constraint.
+
+```typescript
+import { findTemplate, POLICY_TEMPLATE_LIST } from '@mandatez/sdk';
+
+const template = findTemplate('hipaa_healthcare');   // key form
+const sameTemplate = findTemplate('tpl_hipaa');      // id form
+
+for (const t of POLICY_TEMPLATE_LIST) {
+  console.log(t.name, '→', t.rules.length, 'rules');
+}
+```
+
+See [SDK Reference · track](/sdk/track) for how policies plug into `MandateZClient.track()`.

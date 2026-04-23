@@ -42,6 +42,9 @@ export default function RootLayout({
               <Link href="/reports" className="hover:text-gray-200 transition-colors">
                 Reports
               </Link>
+              <Link href="/policies/templates" className="hover:text-gray-200 transition-colors">
+                Templates
+              </Link>
               <Link href="/schedules" className="hover:text-gray-200 transition-colors">
                 Schedules
               </Link>
