@@ -100,6 +100,26 @@ export async function requireRole(
 }
 
 /**
+ * Non-throwing membership check. Returns true if ownerId is a member of
+ * orgId with one of the allowed roles. API key owner_id is the same
+ * identity as organization_members.user_id.
+ */
+export async function checkRole(
+  ownerId: string,
+  orgId: string,
+  roles: Role[],
+): Promise<boolean> {
+  if (!ownerId || !orgId) return false;
+  try {
+    const membership = await getMembership(ownerId, orgId);
+    if (!membership) return false;
+    return roles.includes(membership.role);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Convenience for mapping RbacError into a Next.js JSON response.
  */
 export function rbacErrorResponse(
