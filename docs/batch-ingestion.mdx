@@ -1,0 +1,205 @@
+---
+title: Batch Ingestion & Streaming
+description: High-throughput event ingestion and real-time streaming for MandateZ agents
+---
+
+# Batch Ingestion & Streaming
+
+High-volume agents can produce thousands of events per minute. MandateZ
+provides two endpoints for throughput-sensitive workloads:
+
+- **`POST /api/events/batch`** — up to 1,000 signed events per request.
+- **`GET /api/events/stream`** — Server-Sent Events for live consumption.
+
+Both sit on the canonical event stream — no separate data layer.
+
+---
+
+## When to Use Batch vs. `track()`
+
+| Pattern | Use when |
+|---|---|
+| `client.track(...)` | Interactive agents — single user request, low volume, you need the returned event immediately. |
+| `client.trackBatch([...])` | Background jobs, nightly imports, bulk replays, or any loop that produces 10+ events at once. |
+| `batchConfig` buffering | Continuous high-volume agents where each individual `track()` call should return instantly and the SDK handles batching transparently. |
+
+A single `track()` call is one HTTP round-trip per event. Batching 500 events
+into one request cuts network overhead by ~500× and reduces Supabase load
+proportionally.
+
+---
+
+## Direct Batch Calls
+
+```typescript
+import { MandateZClient } from '@mandatez/sdk';
+
+const client = new MandateZClient({
+  agentId: 'ag_...',
+  ownerId: 'your_org_id',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  apiUrl: 'https://dashboard.mandatez.com',
+  apiKey: process.env.MANDATEZ_API_KEY!,
+});
+
+const result = await client.trackBatch([
+  { action_type: 'read', resource: 'emails' },
+  { action_type: 'export', resource: 'orders' },
+  { action_type: 'call', resource: 'api/stripe' },
+]);
+
+console.log(result);
+// { accepted: 3, rejected: 0, errors: [] }
+```
+
+Each event is signed locally with the agent's Ed25519 private key before
+leaving the process. The dashboard verifies every signature server-side
+and rejects the whole batch if any event fails schema or signature checks
+— never a partial insert.
+
+---
+
+## Buffered `track()` (Background Flush)
+
+Enable `batchConfig` to keep the ergonomic `track()` API while getting
+batch-level throughput:
+
+```typescript
+const client = new MandateZClient({
+  agentId: 'ag_...',
+  ownerId: 'your_org_id',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+  apiUrl: 'https://dashboard.mandatez.com',
+  batchConfig: {
+    enabled: true,
+    maxSize: 200,      // flush when 200 events are queued
+    maxWaitMs: 2_000,  // or after 2s, whichever comes first
+  },
+});
+
+for (const message of stream) {
+  await client.track({ action_type: 'read', resource: 'kafka/inbound' });
+  // returns immediately with a signed event; delivery happens in the background
+}
+
+// Always flush on shutdown so pending events are not dropped.
+await client.flush();
+```
+
+### Buffering Config
+
+| Field | Type | Description |
+|---|---|---|
+| `enabled` | `boolean` | Turn buffering on/off. Off by default. |
+| `maxSize` | `number` | Flush as soon as the buffer holds this many events. |
+| `maxWaitMs` | `number` | Flush this long after the first queued event, even if `maxSize` is not reached. |
+
+<Warning>
+Always call `client.flush()` in shutdown handlers (process exit, SIGTERM,
+serverless request end). Buffered events live in memory and will be lost
+if the process dies before a flush.
+</Warning>
+
+---
+
+## Rate Limits
+
+| Limit | Value |
+|---|---|
+| Events per request | **1,000** |
+| Events per minute per organization | **10,000** |
+| Max request body size | **5 MB** |
+| Signature check | Ed25519 per event, rejected batch on any failure |
+
+Requests that exceed the per-request cap return `413 Payload Too Large`.
+Partition larger workloads into multiple `trackBatch()` calls.
+
+---
+
+## Response Shape
+
+```json
+{
+  "accepted": 842,
+  "rejected": 0,
+  "errors": []
+}
+```
+
+When a batch is rejected, the response includes a structured error list so
+you can pinpoint which events failed before retrying:
+
+```json
+{
+  "error": "Batch contains invalid events — no events were inserted",
+  "accepted": 0,
+  "rejected": 3,
+  "errors": [
+    { "index": 1, "event_id": "…", "reason": "signature_invalid" },
+    { "index": 2, "reason": "schema_invalid", "detail": "action_type: Invalid enum value" }
+  ]
+}
+```
+
+`reason` is always one of: `schema_invalid`, `signature_invalid`,
+`owner_mismatch`, or `http_error`.
+
+---
+
+## Real-Time Streaming (SSE)
+
+For live dashboards, SOC monitors, or agent-to-agent observation, connect
+to the streaming endpoint:
+
+```typescript
+const source = new EventSource(
+  'https://dashboard.mandatez.com/api/events/stream?owner_id=your_org_id',
+);
+
+source.addEventListener('ready', (e) => {
+  console.log('connected', JSON.parse(e.data));
+});
+
+source.addEventListener('event', (e) => {
+  const event = JSON.parse(e.data);
+  console.log(event.action_type, event.resource, event.outcome);
+});
+```
+
+The endpoint emits `ready` on connection, `event` for every newly inserted
+`AgentEvent`, and heartbeat comments every 15s to keep proxies from closing
+idle connections.
+
+### Authentication
+
+Pass an API key in the `Authorization: Bearer mz_live_...` header to gate
+the stream. The key's `owner_id` must match the `owner_id` query parameter
+or the request is rejected with `403`.
+
+### Reconnection
+
+Vercel caps long-lived SSE connections at plan-specific durations. Browser
+`EventSource` reconnects automatically. For server-side consumers, handle
+`onerror` and retry with exponential backoff.
+
+---
+
+## Cross-Verification
+
+Every event delivered through batch or stream carries its Ed25519
+signature and public key. Any downstream system can re-verify on
+receipt:
+
+```typescript
+import { verifyEvent } from '@mandatez/sdk';
+
+const valid = await verifyEvent(event);
+// true — signature matches public_key and canonicalized payload
+```
+
+Tampering with any field of a batched event will fail this check even if
+the event already landed in your database.

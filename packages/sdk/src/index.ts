@@ -25,6 +25,9 @@ export { MandateZClient } from './client.js';
 export type {
   MandateZClientConfig,
   TrackInput,
+  TrackBatchInput,
+  TrackBatchResult,
+  BatchConfig,
   CheckIdentityInput,
   CheckIdentityOutput,
   VerifyAgentInput,

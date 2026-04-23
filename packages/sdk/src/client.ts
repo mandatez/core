@@ -23,6 +23,34 @@ export interface TrackInput {
   waitForApproval?: () => Promise<boolean>;
 }
 
+/** Minimal input for a batched event. Each is signed locally before upload. */
+export interface TrackBatchInput {
+  action_type: AgentEventInput['action_type'];
+  resource: string;
+  outcome?: AgentEventInput['outcome'];
+  policy_id?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TrackBatchResult {
+  accepted: number;
+  rejected: number;
+  errors?: Array<{ index: number; event_id?: string; reason: string; detail?: string }>;
+}
+
+/**
+ * Internal buffering config. When enabled, track() returns immediately
+ * after signing and queues the event — a background flush posts batches
+ * to /api/events/batch when the buffer hits maxSize or maxWaitMs elapses.
+ */
+export interface BatchConfig {
+  enabled: boolean;
+  /** Flush when the buffer reaches this many events. */
+  maxSize: number;
+  /** Flush after this many milliseconds since the first queued event. */
+  maxWaitMs: number;
+}
+
 export interface MandateZClientConfig {
   agentId: string;
   ownerId: string;
@@ -43,6 +71,15 @@ export interface MandateZClientConfig {
    * (fire-and-forget — exporter failures never block or throw from track()).
    */
   exporters?: EventExporter[];
+  /**
+   * Dashboard API base URL. Required for trackBatch() and for track()
+   * buffering mode. Example: 'https://dashboard.mandatez.com'.
+   */
+  apiUrl?: string;
+  /** Optional API key ("mz_live_...") sent to dashboard endpoints. */
+  apiKey?: string;
+  /** Enable internal batching on track() calls. Off by default. */
+  batchConfig?: BatchConfig;
 }
 
 export interface CheckIdentityInput {
@@ -123,6 +160,11 @@ export class MandateZClient {
   private hibpApiKey: string | null;
   private directoryUrl: string;
   private exporters: EventExporter[];
+  private apiUrl: string | null;
+  private apiKey: string | null;
+  private batchConfig: BatchConfig | null;
+  private buffer: AgentEvent[] = [];
+  private bufferFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: MandateZClientConfig) {
     this.agentId = config.agentId;
@@ -131,6 +173,9 @@ export class MandateZClient {
     this.hibpApiKey = config.hibpApiKey ?? null;
     this.directoryUrl = (config.directoryUrl ?? DEFAULT_DIRECTORY_URL).replace(/\/+$/, '');
     this.exporters = config.exporters ?? [];
+    this.apiUrl = config.apiUrl ? config.apiUrl.replace(/\/+$/, '') : null;
+    this.apiKey = config.apiKey ?? null;
+    this.batchConfig = config.batchConfig ?? null;
     this.transport = new SupabaseTransport({
       supabaseUrl: config.supabaseUrl,
       supabaseAnonKey: config.supabaseAnonKey,
@@ -209,6 +254,16 @@ export class MandateZClient {
     };
 
     const signed = await createSignedEvent(eventInput, this.privateKey);
+
+    // Buffering mode: queue the signed event and let the batch flush handle
+    // delivery. The returned event is authoritative (already signed) even
+    // though it has not yet reached the server.
+    if (this.batchConfig?.enabled) {
+      this.enqueue(signed);
+      this.fanOutToExporters(signed);
+      return signed;
+    }
+
     const emitted = await this.transport.emitEvent(signed);
 
     // Fire-and-forget: recompute trust score in background
@@ -219,6 +274,114 @@ export class MandateZClient {
     this.fanOutToExporters(emitted);
 
     return emitted;
+  }
+
+  /**
+   * Signs each input event locally and posts the batch to /api/events/batch.
+   *
+   * Requires `apiUrl` in config. The endpoint rejects the entire batch if
+   * any signature or schema check fails, so a returned `rejected` count is
+   * either 0 (all accepted) or equal to the input length (nothing inserted).
+   */
+  async trackBatch(events: TrackBatchInput[]): Promise<TrackBatchResult> {
+    if (!this.apiUrl) {
+      throw new Error(
+        'MandateZClient: apiUrl is required in config to call trackBatch()',
+      );
+    }
+    if (events.length === 0) {
+      return { accepted: 0, rejected: 0, errors: [] };
+    }
+
+    const signed = await Promise.all(
+      events.map((input) =>
+        createSignedEvent(
+          {
+            agent_id: this.agentId,
+            owner_id: this.ownerId,
+            action_type: input.action_type,
+            resource: input.resource,
+            outcome: input.outcome ?? 'allowed',
+            policy_id: input.policy_id ?? null,
+            metadata: input.metadata ?? {},
+          },
+          this.privateKey,
+        ),
+      ),
+    );
+
+    return this.postBatch(signed);
+  }
+
+  /**
+   * Flushes any buffered events immediately. Callers should invoke this
+   * during graceful shutdown to avoid dropping queued events.
+   */
+  async flush(): Promise<TrackBatchResult> {
+    if (this.bufferFlushTimer) {
+      clearTimeout(this.bufferFlushTimer);
+      this.bufferFlushTimer = null;
+    }
+    const pending = this.buffer;
+    this.buffer = [];
+    if (pending.length === 0) {
+      return { accepted: 0, rejected: 0, errors: [] };
+    }
+    return this.postBatch(pending);
+  }
+
+  private enqueue(event: AgentEvent): void {
+    if (!this.batchConfig) return;
+    this.buffer.push(event);
+
+    if (this.buffer.length >= this.batchConfig.maxSize) {
+      void this.flush().catch(() => {});
+      return;
+    }
+
+    if (!this.bufferFlushTimer) {
+      this.bufferFlushTimer = setTimeout(() => {
+        this.bufferFlushTimer = null;
+        void this.flush().catch(() => {});
+      }, this.batchConfig.maxWaitMs);
+    }
+  }
+
+  private async postBatch(events: AgentEvent[]): Promise<TrackBatchResult> {
+    if (!this.apiUrl) {
+      throw new Error(
+        'MandateZClient: apiUrl is required to flush batched events',
+      );
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
+
+    const res = await fetch(`${this.apiUrl}/api/events/batch`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ owner_id: this.ownerId, events }),
+    });
+
+    const payload = (await res.json().catch(() => ({}))) as TrackBatchResult & {
+      error?: string;
+    };
+
+    if (!res.ok) {
+      return {
+        accepted: payload.accepted ?? 0,
+        rejected: payload.rejected ?? events.length,
+        errors: payload.errors ?? [
+          { index: -1, reason: 'http_error', detail: payload.error ?? `HTTP ${res.status}` },
+        ],
+      };
+    }
+
+    return {
+      accepted: payload.accepted ?? 0,
+      rejected: payload.rejected ?? 0,
+      errors: payload.errors ?? [],
+    };
   }
 
   private fanOutToExporters(event: AgentEvent): void {
