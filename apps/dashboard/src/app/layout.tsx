@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 import { ShadowScanNavLink } from '@/components/shadow-scan-nav-link';
+import { OrgSwitcher } from '@/components/org-switcher';
 
 export const metadata: Metadata = {
   title: 'MandateZ Dashboard',
@@ -53,10 +54,14 @@ export default function RootLayout({
               <Link href="/keys" className="hover:text-gray-200 transition-colors">
                 API Keys
               </Link>
+              <Link href="/organization" className="hover:text-gray-200 transition-colors">
+                Organization
+              </Link>
               <Link href="/pricing" className="hover:text-gray-200 transition-colors">
                 Pricing
               </Link>
             </div>
+            <OrgSwitcher />
           </div>
         </nav>
         <main className="max-w-7xl mx-auto px-6 py-8">
