@@ -59,6 +59,15 @@ leaving the process. The dashboard verifies every signature server-side
 and rejects the whole batch if any event fails schema or signature checks
 — never a partial insert.
 
+<Warning>
+**`trackBatch()` bypasses PolicyEngine and OversightGate.** Events
+submitted to `/api/events/batch` are pre-signed by the caller and
+inserted directly into the audit trail. Policy rules that would `block`
+or `flag` an action via `client.track()` are NOT re-evaluated on the
+batch path. This is intentional for backfills and bulk replays, but
+means you must enforce policy BEFORE signing events you intend to batch.
+</Warning>
+
 ---
 
 ## Buffered `track()` (Background Flush)
@@ -106,17 +115,18 @@ if the process dies before a flush.
 
 ---
 
-## Rate Limits
+## Limits
 
 | Limit | Value |
 |---|---|
 | Events per request | **1,000** |
-| Events per minute per organization | **10,000** |
 | Max request body size | **5 MB** |
-| Signature check | Ed25519 per event, rejected batch on any failure |
+| Signature check | Ed25519 per event, whole batch rejected on any failure |
 
 Requests that exceed the per-request cap return `413 Payload Too Large`.
-Partition larger workloads into multiple `trackBatch()` calls.
+Partition larger workloads into multiple `trackBatch()` calls. MandateZ
+does not currently enforce a per-minute organization rate limit; if you
+need one, front the endpoint with your own quota layer.
 
 ---
 
@@ -180,11 +190,20 @@ Pass an API key in the `Authorization: Bearer mz_live_...` header to gate
 the stream. The key's `owner_id` must match the `owner_id` query parameter
 or the request is rejected with `403`.
 
-### Reconnection
+### Reconnection & Gap-Close
 
 Vercel caps long-lived SSE connections at plan-specific durations. Browser
-`EventSource` reconnects automatically. For server-side consumers, handle
-`onerror` and retry with exponential backoff.
+`EventSource` reconnects automatically and includes the ID of the last
+event it received in the `Last-Event-ID` header. MandateZ honours this
+header: on reconnect, the endpoint first replays every event with a
+timestamp strictly greater than the last event's timestamp (matched by
+`event_id`), then switches over to the live realtime subscription. Any
+events emitted while the client was disconnected are delivered before
+the stream resumes in real time.
+
+For server-side consumers, set `Last-Event-ID` manually on reconnect
+using the `event.event_id` of the most recent event you acknowledged.
+Retry with exponential backoff on `onerror`.
 
 ---
 

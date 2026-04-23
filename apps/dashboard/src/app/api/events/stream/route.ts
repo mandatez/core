@@ -23,8 +23,37 @@ interface AgentEventRow {
   public_key: string;
 }
 
-function formatSse(event: string, data: unknown): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+function formatSse(event: string, data: unknown, id?: string): string {
+  const idLine = id ? `id: ${id}\n` : '';
+  return `${idLine}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+function toStreamEvent(row: AgentEventRow): {
+  event_id: string;
+  agent_id: string;
+  owner_id: string;
+  timestamp: string;
+  action_type: string;
+  resource: string;
+  outcome: string;
+  policy_id: string | null;
+  metadata: Record<string, unknown>;
+  signature: string;
+  public_key: string;
+} {
+  return {
+    event_id: row.id,
+    agent_id: row.agent_id,
+    owner_id: row.owner_id,
+    timestamp: row.timestamp,
+    action_type: row.action_type,
+    resource: row.resource,
+    outcome: row.outcome,
+    policy_id: row.policy_id,
+    metadata: row.metadata ?? {},
+    signature: row.signature,
+    public_key: row.public_key,
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -33,11 +62,16 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
   const ownerId = auth.ownerId;
 
+  // SSE resume: if the client supplies Last-Event-ID, look up the
+  // timestamp of that event so we can replay everything that happened
+  // while they were disconnected before joining the live channel.
+  const lastEventId = request.headers.get('last-event-id')?.trim() || null;
+
   const supabase = createServerClient();
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
+    async start(controller) {
       let closed = false;
 
       const safeEnqueue = (chunk: string) => {
@@ -51,6 +85,37 @@ export async function GET(request: NextRequest) {
 
       safeEnqueue(formatSse('ready', { owner_id: ownerId, timestamp: new Date().toISOString() }));
 
+      // --- Catch-up phase ---------------------------------------------
+      // Replay any events with timestamp > last seen event's timestamp.
+      if (lastEventId) {
+        try {
+          const { data: lastRow } = await supabase
+            .from('agent_events')
+            .select('timestamp')
+            .eq('id', lastEventId)
+            .eq('owner_id', ownerId)
+            .maybeSingle();
+
+          if (lastRow?.timestamp) {
+            const { data: missed } = await supabase
+              .from('agent_events')
+              .select(
+                'id, agent_id, owner_id, timestamp, action_type, resource, outcome, policy_id, metadata, signature, public_key',
+              )
+              .eq('owner_id', ownerId)
+              .gt('timestamp', lastRow.timestamp)
+              .order('timestamp', { ascending: true })
+              .limit(1000);
+
+            for (const row of (missed ?? []) as AgentEventRow[]) {
+              safeEnqueue(formatSse('event', toStreamEvent(row), row.id));
+            }
+          }
+        } catch {
+          // Catch-up failure must not break the live stream.
+        }
+      }
+
       const channel = supabase
         .channel(`agent_events:${ownerId}:${Date.now()}`)
         .on(
@@ -63,21 +128,7 @@ export async function GET(request: NextRequest) {
           } as Record<string, unknown>,
           (payload: { new: AgentEventRow }) => {
             const row = payload.new;
-            safeEnqueue(
-              formatSse('event', {
-                event_id: row.id,
-                agent_id: row.agent_id,
-                owner_id: row.owner_id,
-                timestamp: row.timestamp,
-                action_type: row.action_type,
-                resource: row.resource,
-                outcome: row.outcome,
-                policy_id: row.policy_id,
-                metadata: row.metadata ?? {},
-                signature: row.signature,
-                public_key: row.public_key,
-              }),
-            );
+            safeEnqueue(formatSse('event', toStreamEvent(row), row.id));
           },
         )
         .subscribe();
