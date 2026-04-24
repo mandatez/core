@@ -63,7 +63,9 @@ export default function SchedulesClient() {
   async function loadSchedule(id: string) {
     if (!id) return;
     try {
-      const res = await fetch(`/api/schedules?owner_id=${encodeURIComponent(id)}`);
+      const res = await fetch(`/api/schedules?owner_id=${encodeURIComponent(id)}`, {
+        credentials: 'include',
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load');
       const s = json.schedule as ReportSchedule | null;
@@ -96,6 +98,7 @@ export default function SchedulesClient() {
       const res = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           owner_id: ownerId.trim(),
           email: email.trim(),
@@ -124,7 +127,7 @@ export default function SchedulesClient() {
     try {
       const res = await fetch(
         `/api/schedules?owner_id=${encodeURIComponent(ownerId.trim())}`,
-        { method: 'DELETE' },
+        { method: 'DELETE', credentials: 'include' },
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Cancel failed');
@@ -156,6 +159,7 @@ export default function SchedulesClient() {
         const res = await fetch('/api/reports/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             owner_id: ownerId.trim(),
             report_type: reportType,

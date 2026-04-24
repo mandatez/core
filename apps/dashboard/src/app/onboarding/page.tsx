@@ -93,7 +93,7 @@ export default function OnboardingPage() {
         ? window.localStorage.getItem('mandatez_owner_id')
         : null;
     setOwnerId(stored ?? '');
-    fetch('/api/policies/from-template')
+    fetch('/api/policies/from-template', { credentials: 'include' })
       .then((r) => r.json())
       .then((j: { templates?: PolicyTemplate[] }) => {
         if (j.templates) setTemplates(j.templates);
@@ -116,6 +116,7 @@ export default function OnboardingPage() {
       const res = await fetch('/api/agents/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           owner_id: ownerId.trim(),
           name: agentName.trim(),
@@ -144,6 +145,7 @@ export default function OnboardingPage() {
       const res = await fetch('/api/policies/from-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           owner_id: agent.owner_id,
           agent_id: agent.agent_id,

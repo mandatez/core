@@ -24,7 +24,9 @@ export function GetStartedBanner() {
       return;
     }
 
-    fetch(`/api/agents/list?owner_id=${encodeURIComponent(ownerId)}`)
+    fetch(`/api/agents/list?owner_id=${encodeURIComponent(ownerId)}`, {
+      credentials: 'include',
+    })
       .then((r) => r.json())
       .then((json: { count?: number }) => {
         if (cancelled) return;

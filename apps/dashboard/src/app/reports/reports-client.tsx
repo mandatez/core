@@ -62,6 +62,7 @@ export function ReportsClient() {
       const response = await fetch('/api/reports/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ owner_id: ownerId.trim(), report_type: reportType }),
       });
 

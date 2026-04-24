@@ -64,7 +64,9 @@ export default function OrganizationClient() {
   const [newOrgEmail, setNewOrgEmail] = useState('');
 
   const loadOrgs = useCallback(async (uid: string) => {
-    const res = await fetch(`/api/organizations?user_id=${encodeURIComponent(uid)}`);
+    const res = await fetch(`/api/organizations?user_id=${encodeURIComponent(uid)}`, {
+      credentials: 'include',
+    });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to load organizations');
     return json.organizations as Organization[];
@@ -73,6 +75,7 @@ export default function OrganizationClient() {
   const loadOrgDetail = useCallback(async (orgId: string, uid: string) => {
     const res = await fetch(
       `/api/organizations/${orgId}?user_id=${encodeURIComponent(uid)}`,
+      { credentials: 'include' },
     );
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to load organization');
@@ -162,6 +165,7 @@ export default function OrganizationClient() {
       const res = await fetch('/api/organizations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           user_id: userId.trim(),
           name: newOrgName.trim(),
@@ -195,6 +199,7 @@ export default function OrganizationClient() {
       const res = await fetch(`/api/organizations/${activeOrgId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           user_id: userId,
           invitee_user_id: inviteeId.trim(),
@@ -224,7 +229,7 @@ export default function OrganizationClient() {
     try {
       const res = await fetch(
         `/api/organizations/${activeOrgId}/members/${encodeURIComponent(targetId)}?user_id=${encodeURIComponent(userId)}`,
-        { method: 'DELETE' },
+        { method: 'DELETE', credentials: 'include' },
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Remove failed');
@@ -246,6 +251,7 @@ export default function OrganizationClient() {
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ user_id: userId, role: nextRole }),
         },
       );
@@ -271,7 +277,7 @@ export default function OrganizationClient() {
     try {
       const res = await fetch(
         `/api/organizations/${activeOrgId}?user_id=${encodeURIComponent(userId)}`,
-        { method: 'DELETE' },
+        { method: 'DELETE', credentials: 'include' },
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Delete failed');

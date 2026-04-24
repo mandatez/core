@@ -59,6 +59,7 @@ export function TemplatesGallery({ templates }: { templates: TemplateView[] }) {
     setAgentsError(null);
     const controller = new AbortController();
     fetch(`/api/agents/list?owner_id=${encodeURIComponent(ownerId.trim())}`, {
+      credentials: 'include',
       signal: controller.signal,
     })
       .then((r) => r.json())
@@ -156,6 +157,7 @@ function TemplateCard({
       const res = await fetch('/api/policies/from-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           owner_id: ownerId,
           template_id: template.key,

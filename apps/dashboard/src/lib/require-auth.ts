@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient as createSupabaseServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { extractApiKey, validateApiKey } from './auth';
 
 export type AuthResult =
@@ -6,13 +8,63 @@ export type AuthResult =
   | { ok: false; response: NextResponse };
 
 /**
- * Require a valid API key. Optionally require the body-supplied
- * owner_id to match the key's owner_id (defense-in-depth).
+ * Resolve the caller from a Supabase session cookie, if present.
+ * Covers the dashboard UI, which ships no API key from the browser.
+ * Returns null on any failure so callers fall through to API key auth.
+ */
+async function tryCookieAuth(): Promise<string | null> {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+
+  try {
+    const cookieStore = await cookies();
+    const supabase = createSupabaseServerClient(url, anonKey, {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        // Route handlers can't mutate cookies during a read — the middleware
+        // / server-component layer is responsible for session refresh.
+        setAll: () => {},
+      },
+    });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Require a valid caller. Accepts either:
+ *   1. Supabase session cookie (dashboard UI — cookies travel automatically
+ *      when fetch() uses credentials: 'include' on same-origin requests).
+ *   2. Bearer API key in Authorization header (CI, SDKs, curl, webhooks).
+ *
+ * Owner identity is the Supabase user.id when cookie-authed, or the
+ * API key's owner_id otherwise. RBAC layers on top via requireRole().
  */
 export async function requireApiKeyAuth(
   request: NextRequest,
   opts: { bodyOwnerId?: string | null } = {},
 ): Promise<AuthResult> {
+  // Cookie first — the dashboard UI relies on this.
+  const cookieOwner = await tryCookieAuth();
+  if (cookieOwner) {
+    if (opts.bodyOwnerId && opts.bodyOwnerId !== cookieOwner) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: 'owner_id does not match authenticated session' },
+          { status: 403 },
+        ),
+      };
+    }
+    return { ok: true, ownerId: cookieOwner };
+  }
+
+  // API key — external callers.
   const apiKey = extractApiKey(request.headers);
   if (!apiKey) {
     return {

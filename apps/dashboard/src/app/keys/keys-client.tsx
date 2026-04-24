@@ -47,7 +47,9 @@ export function KeysClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/keys?owner_id=${encodeURIComponent(owner)}`);
+      const res = await fetch(`/api/keys?owner_id=${encodeURIComponent(owner)}`, {
+        credentials: 'include',
+      });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `HTTP ${res.status}`);
@@ -90,6 +92,7 @@ export function KeysClient() {
       const res = await fetch('/api/keys/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ owner_id: ownerTrimmed, name: nameTrimmed }),
       });
       if (!res.ok) {
@@ -129,7 +132,10 @@ export function KeysClient() {
     setRevoking(id);
     setError(null);
     try {
-      const res = await fetch(`/api/keys/${id}/revoke`, { method: 'POST' });
+      const res = await fetch(`/api/keys/${id}/revoke`, {
+        method: 'POST',
+        credentials: 'include',
+      });
       if (!res.ok && res.status !== 409) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `HTTP ${res.status}`);

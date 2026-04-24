@@ -70,6 +70,7 @@ export function ShadowScanClient({ initialOwnerId = '' }: { initialOwnerId?: str
       const res = await fetch('/api/shadow-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           owner_id: ownerId.trim() || undefined,
           scan_targets: {
@@ -110,6 +111,7 @@ export function ShadowScanClient({ initialOwnerId = '' }: { initialOwnerId?: str
       const res = await fetch('/api/reports/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ owner_id: ownerId.trim(), report_type: 'owasp' }),
       });
       if (!res.ok) throw new Error('Report generation failed');

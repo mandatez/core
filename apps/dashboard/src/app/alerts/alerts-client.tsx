@@ -72,7 +72,9 @@ export default function AlertsClient() {
     setLoading(true);
     setSaveStatus({ kind: 'idle' });
     try {
-      const res = await fetch(`/api/alerts?owner_id=${encodeURIComponent(id)}`);
+      const res = await fetch(`/api/alerts?owner_id=${encodeURIComponent(id)}`, {
+        credentials: 'include',
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load');
       setConfig(json.config as AlertConfig);
@@ -96,6 +98,7 @@ export default function AlertsClient() {
       const res = await fetch('/api/alerts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ ...config, owner_id: ownerId.trim() }),
       });
       const json = await res.json();
@@ -128,6 +131,7 @@ export default function AlertsClient() {
       const res = await fetch('/api/alerts/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ channel, url }),
       });
       const json = await res.json();

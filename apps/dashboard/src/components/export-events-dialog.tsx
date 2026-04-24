@@ -71,7 +71,9 @@ export function ExportEventsDialog({ variant = 'button', label = 'Export CSV' }:
       if (agentId.trim()) params.set('agent_id', agentId.trim());
       if (outcome) params.set('outcome', outcome);
 
-      const res = await fetch(`/api/events/export?${params.toString()}`);
+      const res = await fetch(`/api/events/export?${params.toString()}`, {
+        credentials: 'include',
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: 'Request failed' }));
         throw new Error(body.error ?? `HTTP ${res.status}`);

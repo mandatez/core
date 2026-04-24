@@ -22,7 +22,9 @@ export function OrgSwitcher() {
   const load = useCallback(async (uid: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/organizations?user_id=${encodeURIComponent(uid)}`);
+      const res = await fetch(`/api/organizations?user_id=${encodeURIComponent(uid)}`, {
+        credentials: 'include',
+      });
       const json = await res.json();
       if (!res.ok) return;
       const list = json.organizations as Organization[];

@@ -35,6 +35,7 @@ export default function SettingsClient() {
   const load = useCallback(async (uid: string, orgId: string) => {
     const res = await fetch(
       `/api/organizations/${orgId}?user_id=${encodeURIComponent(uid)}`,
+      { credentials: 'include' },
     );
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to load');
@@ -79,6 +80,7 @@ export default function SettingsClient() {
       const res = await fetch(`/api/organizations/${org.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(body),
       });
       const json = await res.json();
@@ -109,6 +111,7 @@ export default function SettingsClient() {
       const res = await fetch(`/api/organizations/${org.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           user_id: userId,
           transfer_to_user_id: transferTo.trim(),

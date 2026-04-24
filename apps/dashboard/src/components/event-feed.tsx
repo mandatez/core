@@ -150,6 +150,7 @@ export function EventFeed({ ownerId }: { ownerId?: string } = {}) {
       const res = await fetch(`/api/agents/${encodeURIComponent(agentId)}/revoke`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
       if (!res.ok && res.status !== 409) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
