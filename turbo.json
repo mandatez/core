@@ -3,7 +3,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "n8n-nodes-mandatez#build": {
       "dependsOn": [],
