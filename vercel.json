@@ -1,0 +1,5 @@
+{
+  "buildCommand": "turbo build --filter=@mandatez/dashboard",
+  "installCommand": "pnpm install",
+  "framework": "nextjs"
+}
