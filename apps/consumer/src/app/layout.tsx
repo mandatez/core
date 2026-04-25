@@ -1,12 +1,28 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk } from 'next/font/google';
+import { Syne, Inter, JetBrains_Mono } from 'next/font/google';
 import { ClerkProvider, SignInButton, Show, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import './globals.css';
 
-const spaceGrotesk = Space_Grotesk({
+const syne = Syne({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  variable: '--font-syne',
+  display: 'swap',
+});
+
+const inter = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-jetbrains',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -46,37 +62,40 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${spaceGrotesk.className} text-gray-100 min-h-screen`}>
+    <html
+      lang="en"
+      className={`${syne.variable} ${inter.variable} ${jetbrains.variable}`}
+    >
+      <body className="text-text-primary min-h-screen font-sans">
         <ClerkProvider>
-          <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gray-800/50 backdrop-blur-sm px-8 md:px-16 lg:px-24 py-4">
+          <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border-subtle px-8 md:px-16 lg:px-24 py-4">
             <div className="flex items-center gap-8">
-              <Link href="/" className="text-xl font-black tracking-tight">
-                Mandate<span className="text-blue-400">Z</span>
+              <Link href="/" className="text-xl font-black tracking-tight font-display">
+                Mandate<span className="text-accent-primary">Z</span>
               </Link>
-              <div className="flex gap-6 text-sm text-gray-400">
-                <Link href="/" className="hover:text-gray-200 transition-colors">
+              <div className="flex gap-6 text-sm text-text-secondary">
+                <Link href="/" className="hover:text-text-primary transition-colors">
                   Home
                 </Link>
-                <Link href="/activity" className="hover:text-gray-200 transition-colors">
+                <Link href="/activity" className="hover:text-text-primary transition-colors">
                   Activity
                 </Link>
-                <Link href="/rules" className="hover:text-gray-200 transition-colors">
+                <Link href="/rules" className="hover:text-text-primary transition-colors">
                   Rules
                 </Link>
-                <Link href="/pricing" className="hover:text-gray-200 transition-colors">
+                <Link href="/pricing" className="hover:text-text-primary transition-colors">
                   Pricing
                 </Link>
               </div>
               <div className="ml-auto flex items-center gap-6">
                 <Show when="signed-in">
-                  <Link href="/account" className="text-sm text-gray-400 hover:text-gray-200 transition-colors">
+                  <Link href="/account" className="text-sm text-text-secondary hover:text-text-primary transition-colors">
                     Account
                   </Link>
                 </Show>
                 <Show when="signed-out">
                   <SignInButton>
-                    <button className="text-sm text-gray-400 hover:text-gray-200 transition-colors">
+                    <button className="text-sm text-text-secondary hover:text-text-primary transition-colors">
                       Sign in
                     </button>
                   </SignInButton>

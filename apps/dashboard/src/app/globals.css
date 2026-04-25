@@ -1,5 +1,74 @@
 @import "tailwindcss";
 
+/* ============================================================
+   MandateZ unified design tokens
+   Source of truth for both apps/dashboard and apps/consumer.
+   Keep this block byte-identical between the two globals.css files.
+   ============================================================ */
+
+@theme {
+  /* Surfaces */
+  --color-bg-base: #0a0a0a;
+  --color-bg-elevated: #111113;
+  --color-bg-subtle: #18181b;
+  --color-bg-overlay: #1f1f23;
+
+  /* Borders */
+  --color-border-default: #27272a;
+  --color-border-subtle: #1f1f23;
+  --color-border-strong: #3f3f46;
+  --color-border-focus: #3b82f6;
+
+  /* Text */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+  --color-text-disabled: #52525b;
+
+  /* Accents — use sparingly */
+  --color-accent-primary: #3b82f6;
+  --color-accent-primary-hover: #60a5fa;
+  --color-accent-primary-pressed: #2563eb;
+  --color-accent-success: #10b981;
+  --color-accent-success-subtle: #064e3b;
+  --color-accent-danger: #ef4444;
+  --color-accent-danger-subtle: #450a0a;
+  --color-accent-warning: #f59e0b;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Typography — values resolve against next/font CSS variables
+     registered on <html> in app/layout.tsx. */
+  --font-display: var(--font-syne), "Inter Display", system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", "Fira Code", monospace;
+}
+
+:root {
+  /* 8px base spacing grid — direct CSS use only.
+     Tailwind has its own --spacing scale; do not collide with it. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* Section rhythm */
+  --section-padding-y: clamp(64px, 8vw, 128px);
+  --section-padding-y-tight: clamp(48px, 6vw, 96px);
+}
+
 body {
-  background-color: #0a0a0a;
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
 }
