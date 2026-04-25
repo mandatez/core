@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Syne, Inter, JetBrains_Mono } from 'next/font/google';
-import { ClerkProvider, SignInButton, Show, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import './globals.css';
 
@@ -67,49 +66,38 @@ export default function RootLayout({
       className={`${syne.variable} ${inter.variable} ${jetbrains.variable}`}
     >
       <body className="text-text-primary min-h-screen font-sans">
-        <ClerkProvider>
-          <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border-subtle px-8 md:px-16 lg:px-24 py-4">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="text-xl font-black tracking-tight font-display">
-                Mandate<span className="text-accent-primary">Z</span>
+        <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border-subtle px-8 md:px-16 lg:px-24 py-4">
+          <div className="flex items-center gap-8">
+            <Link href="/" className="text-xl font-black tracking-tight font-display">
+              Mandate<span className="text-accent-primary">Z</span>
+            </Link>
+            <div className="flex gap-6 text-sm text-text-secondary">
+              <Link href="/" className="hover:text-text-primary transition-colors">
+                Home
               </Link>
-              <div className="flex gap-6 text-sm text-text-secondary">
-                <Link href="/" className="hover:text-text-primary transition-colors">
-                  Home
-                </Link>
-                <Link href="/activity" className="hover:text-text-primary transition-colors">
-                  Activity
-                </Link>
-                <Link href="/rules" className="hover:text-text-primary transition-colors">
-                  Rules
-                </Link>
-                <Link href="/pricing" className="hover:text-text-primary transition-colors">
-                  Pricing
-                </Link>
-              </div>
-              <div className="ml-auto flex items-center gap-6">
-                <Show when="signed-in">
-                  <Link href="/account" className="text-sm text-text-secondary hover:text-text-primary transition-colors">
-                    Account
-                  </Link>
-                </Show>
-                <Show when="signed-out">
-                  <SignInButton>
-                    <button className="text-sm text-text-secondary hover:text-text-primary transition-colors">
-                      Sign in
-                    </button>
-                  </SignInButton>
-                </Show>
-                <Show when="signed-in">
-                  <UserButton userProfileUrl="/account" userProfileMode="navigation" />
-                </Show>
-              </div>
+              <Link href="/activity" className="hover:text-text-primary transition-colors">
+                Activity
+              </Link>
+              <Link href="/rules" className="hover:text-text-primary transition-colors">
+                Rules
+              </Link>
+              <Link href="/pricing" className="hover:text-text-primary transition-colors">
+                Pricing
+              </Link>
             </div>
-          </nav>
-          <main>
-            {children}
-          </main>
-        </ClerkProvider>
+            <div className="ml-auto flex items-center gap-6">
+              <Link
+                href="https://core-dashboard-black.vercel.app/login"
+                className="text-sm text-text-secondary hover:text-text-primary transition-colors"
+              >
+                Sign in
+              </Link>
+            </div>
+          </div>
+        </nav>
+        <main>
+          {children}
+        </main>
       </body>
     </html>
   );
