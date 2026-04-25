@@ -1,6 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import {
+  Button,
+  Card,
+  EmptyState,
+  SectionMarker,
+  Tag,
+  cn,
+} from '@/components/ui';
 
 interface ApiKeyRow {
   id: string;
@@ -18,6 +26,9 @@ interface NewKey {
   name: string;
   created_at: string;
 }
+
+const inputClasses =
+  'w-full rounded-md border border-border-default bg-bg-base px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-accent-primary focus:outline-none transition-colors';
 
 function formatRelativeTime(iso: string | null): string {
   if (!iso) return 'Never';
@@ -47,9 +58,10 @@ export function KeysClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/keys?owner_id=${encodeURIComponent(owner)}`, {
-        credentials: 'include',
-      });
+      const res = await fetch(
+        `/api/keys?owner_id=${encodeURIComponent(owner)}`,
+        { credentials: 'include' },
+      );
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `HTTP ${res.status}`);
@@ -83,7 +95,9 @@ export function KeysClient() {
       return;
     }
     if (!nameTrimmed) {
-      setError('Give this key a descriptive name (e.g. "Production agent fleet").');
+      setError(
+        'Give this key a descriptive name (e.g. "Production agent fleet").',
+      );
       return;
     }
 
@@ -161,70 +175,96 @@ export function KeysClient() {
 
   const activeKeys = keys.filter((k) => !k.revoked_at);
   const revokedKeys = keys.filter((k) => k.revoked_at);
+  const ownerEmpty = !ownerId.trim();
 
   return (
-    <div className="space-y-8">
-      <div className="border border-gray-800 rounded-lg p-5">
-        <label htmlFor="owner-id" className="block text-sm font-medium text-gray-200 mb-2">
-          Owner ID
-        </label>
-        <input
-          id="owner-id"
-          type="text"
-          value={ownerId}
-          onChange={(e) => setOwnerId(e.target.value)}
-          placeholder="user_2abc... or your organization id"
-          className="w-full px-4 py-2.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-100 placeholder-gray-600 font-mono text-sm focus:outline-none focus:border-blue-600 transition-colors"
-        />
-        <p className="text-xs text-gray-500 mt-2">
-          Keys are scoped to an owner_id. Each owner sees only their own keys.
-        </p>
-      </div>
+    <div className="space-y-12">
+      {/* Owner ID */}
+      <section className="space-y-5">
+        <SectionMarker number="01" label="API KEYS" />
+        <Card variant="elevated" className="p-6">
+          <div className="space-y-3">
+            <label
+              htmlFor="owner-id"
+              className="font-mono text-xs uppercase tracking-widest text-text-muted"
+            >
+              Owner ID
+            </label>
+            <input
+              id="owner-id"
+              type="text"
+              value={ownerId}
+              onChange={(e) => setOwnerId(e.target.value)}
+              placeholder="user_2abc... or your organization id"
+              className={cn(inputClasses, 'font-mono')}
+            />
+            <p className="text-xs text-text-muted">
+              Keys are scoped to an owner_id. Each owner sees only their own
+              keys.
+            </p>
+          </div>
+        </Card>
+      </section>
 
       {error && (
-        <div className="border border-red-800 bg-red-900/20 rounded-lg p-4 text-sm text-red-300">
-          {error}
-        </div>
+        <Card variant="danger-tinted" className="p-4">
+          <p className="text-sm text-text-primary">{error}</p>
+        </Card>
       )}
 
-      {/* One-time new key display */}
+      {/* New key reveal */}
       {newKey && (
-        <div className="border border-emerald-700 bg-emerald-950/30 rounded-lg p-5 space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-900/60 flex items-center justify-center flex-shrink-0">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-300">
-                <path d="M20 6L9 17l-5-5" />
-              </svg>
+        <section className="space-y-5">
+          <SectionMarker number="02" label="NEW KEY · COPY NOW" />
+          <Card variant="success-tinted" className="space-y-4 p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-success/20">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-accent-success"
+                >
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-text-primary">
+                  Key generated — {newKey.name}
+                </h3>
+                <p className="mt-1 text-sm text-accent-warning">
+                  <strong className="font-semibold">
+                    Copy this key — it won&apos;t be shown again.
+                  </strong>{' '}
+                  Store it in your secret manager (AWS Secrets Manager, Vercel
+                  env vars, 1Password, etc.).
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setNewKey(null)}
+                aria-label="Dismiss"
+              >
+                ✕
+              </Button>
             </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-emerald-200">Key generated — {newKey.name}</h3>
-              <p className="text-sm text-amber-200 mt-1">
-                <strong className="font-semibold">Copy this key — it won&apos;t be shown again.</strong>{' '}
-                Store it in your secret manager (AWS Secrets Manager, Vercel env vars, 1Password, etc.).
-              </p>
+
+            <div className="flex items-stretch gap-2">
+              <code className="flex-1 select-all break-all rounded border border-accent-success/40 bg-bg-base px-3 py-2.5 font-mono text-sm text-accent-success">
+                {newKey.plaintext}
+              </code>
+              <Button variant="success" onClick={handleCopy}>
+                {copied ? 'Copied ✓' : 'Copy'}
+              </Button>
             </div>
-            <button
-              onClick={() => setNewKey(null)}
-              className="text-gray-500 hover:text-gray-300 text-sm"
-              aria-label="Dismiss"
-            >
-              ✕
-            </button>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <code className="flex-1 font-mono text-sm text-emerald-200 bg-black/60 border border-emerald-900/60 rounded px-3 py-2.5 break-all select-all">
-              {newKey.plaintext}
-            </code>
-            <button
-              onClick={handleCopy}
-              className="px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors whitespace-nowrap"
-            >
-              {copied ? 'Copied ✓' : 'Copy'}
-            </button>
-          </div>
-
-          <pre className="text-xs text-gray-400 bg-gray-950/60 rounded p-3 overflow-x-auto">
+            <pre className="overflow-x-auto rounded-md bg-bg-base/80 p-4 font-mono text-xs text-text-secondary">
 {`import { MandateZClient } from '@mandatez/sdk';
 
 const client = new MandateZClient({
@@ -233,122 +273,203 @@ const client = new MandateZClient({
   ownerId: '...',
   privateKey: process.env.AGENT_PRIVATE_KEY!,
 });`}
-          </pre>
-        </div>
+            </pre>
+          </Card>
+        </section>
       )}
 
-      {/* Generate form */}
-      <div className="border border-gray-800 rounded-lg p-5 space-y-4">
-        <div>
-          <h3 className="text-base font-medium text-gray-100">Generate a new API key</h3>
-          <p className="text-xs text-gray-500 mt-1">
-            Replaces raw Supabase credentials in your agent config with a single revocable string.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
-            placeholder="Key name (e.g. Production agent fleet)"
-            className="flex-1 px-4 py-2.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-100 placeholder-gray-600 text-sm focus:outline-none focus:border-blue-600 transition-colors"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleGenerate();
-            }}
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={generating || !ownerId.trim() || !newKeyName.trim()}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors whitespace-nowrap"
-          >
-            {generating ? 'Generating...' : 'Generate New Key'}
-          </button>
-        </div>
-      </div>
+      {/* Generate */}
+      <section className="space-y-5">
+        <SectionMarker number="03" label="GENERATE" />
+        <Card variant="elevated" className="p-6">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-text-primary">
+                Generate a new API key
+              </h3>
+              <p className="mt-1 text-sm text-text-secondary">
+                Replaces raw Supabase credentials in your agent config with a
+                single revocable string.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+                placeholder="Key name (e.g. Production agent fleet)"
+                className={cn(inputClasses, 'flex-1')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleGenerate();
+                }}
+              />
+              <Button
+                variant="primary"
+                onClick={handleGenerate}
+                disabled={generating || ownerEmpty || !newKeyName.trim()}
+                loading={generating}
+                leftIcon={
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                }
+              >
+                Generate new key
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </section>
 
-      {/* Existing keys */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-medium text-gray-100">Active keys</h3>
-          <span className="text-xs text-gray-500">
-            {loading ? 'Loading...' : `${activeKeys.length} active · ${revokedKeys.length} revoked`}
+      {/* Active keys */}
+      <section className="space-y-5">
+        <div className="flex items-center justify-between">
+          <SectionMarker number="04" label="ACTIVE KEYS" />
+          <span className="font-mono text-xs uppercase tracking-widest text-text-muted">
+            {loading
+              ? 'Loading…'
+              : `${activeKeys.length} active · ${revokedKeys.length} revoked`}
           </span>
         </div>
 
-        {!ownerId.trim() ? (
-          <div className="text-gray-500 text-sm text-center py-12 border border-gray-800 rounded-lg">
-            Enter an owner_id above to list existing keys.
-          </div>
+        {ownerEmpty ? (
+          <EmptyState
+            title="Enter an owner_id to see keys"
+            description="Keys are scoped per owner. Provide an owner_id above to list, generate, or revoke credentials."
+          />
         ) : activeKeys.length === 0 && !loading ? (
-          <div className="text-gray-500 text-sm text-center py-12 border border-gray-800 rounded-lg">
-            No active keys for this owner_id. Generate one above to get started.
-          </div>
+          <EmptyState
+            title="No active keys yet"
+            description="API keys replace raw Supabase credentials in your agent config. Generate your first key — name it after where it'll run, e.g. &quot;Production agent fleet&quot; or &quot;n8n workflow #4&quot;."
+            action={
+              <Button
+                variant="primary"
+                onClick={() => {
+                  document.getElementById('owner-id')?.focus();
+                  const next = document.querySelector<HTMLInputElement>(
+                    'input[placeholder^="Key name"]',
+                  );
+                  next?.focus();
+                }}
+              >
+                Name a key →
+              </Button>
+            }
+          />
         ) : (
-          <div className="border border-gray-800 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-900/60 border-b border-gray-800">
-                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
-                    <th className="px-4 py-3 font-medium">Name</th>
-                    <th className="px-4 py-3 font-medium">Prefix</th>
-                    <th className="px-4 py-3 font-medium">Last Used</th>
-                    <th className="px-4 py-3 font-medium">Created</th>
-                    <th className="px-4 py-3 font-medium text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {activeKeys.map((key) => (
-                    <tr key={key.id} className="hover:bg-gray-900/30 transition-colors">
-                      <td className="px-4 py-3 text-gray-200">{key.name}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-400">
-                        {key.key_prefix}...
-                      </td>
-                      <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                        {formatRelativeTime(key.last_used_at)}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
-                        {new Date(key.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleRevoke(key.id, key.key_prefix)}
-                          disabled={revoking === key.id}
-                          className="text-xs px-2.5 py-1 rounded border border-red-900/60 bg-red-950/30 text-red-300 font-medium hover:bg-red-900/40 hover:border-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {revoking === key.id ? 'Revoking...' : 'Revoke'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="space-y-2">
+            {activeKeys.map((key) => (
+              <Card
+                key={key.id}
+                variant="default"
+                className="flex flex-wrap items-center gap-3 p-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-text-primary">
+                    {key.name}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] text-text-muted">
+                    <span>
+                      created{' '}
+                      {new Date(key.created_at).toLocaleDateString()}
+                    </span>
+                    <span>·</span>
+                    <span>
+                      last used {formatRelativeTime(key.last_used_at)}
+                    </span>
+                  </div>
+                </div>
+                <Tag variant="info">
+                  {key.key_prefix}
+                  …
+                </Tag>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRevoke(key.id, key.key_prefix)}
+                    disabled={revoking === key.id}
+                    loading={revoking === key.id}
+                    className="text-accent-danger hover:text-accent-danger"
+                  >
+                    Revoke
+                  </Button>
+                </div>
+              </Card>
+            ))}
           </div>
         )}
 
         {revokedKeys.length > 0 && (
-          <details className="mt-6">
-            <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-300">
-              Show {revokedKeys.length} revoked {revokedKeys.length === 1 ? 'key' : 'keys'}
+          <details className="mt-2">
+            <summary className="cursor-pointer font-mono text-xs uppercase tracking-widest text-text-muted hover:text-text-secondary">
+              Show {revokedKeys.length} revoked{' '}
+              {revokedKeys.length === 1 ? 'key' : 'keys'}
             </summary>
-            <div className="mt-3 border border-gray-900 rounded-lg overflow-hidden opacity-70">
-              <table className="w-full text-sm">
-                <tbody className="divide-y divide-gray-900">
-                  {revokedKeys.map((key) => (
-                    <tr key={key.id} className="text-xs">
-                      <td className="px-4 py-2.5 text-gray-500">{key.name}</td>
-                      <td className="px-4 py-2.5 font-mono text-gray-600">{key.key_prefix}...</td>
-                      <td className="px-4 py-2.5 text-gray-600">
-                        Revoked {formatRelativeTime(key.revoked_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-3 space-y-2 opacity-70">
+              {revokedKeys.map((key) => (
+                <Card
+                  key={key.id}
+                  variant="default"
+                  className="flex flex-wrap items-center gap-3 p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xs text-text-secondary">
+                      {key.name}
+                    </div>
+                    <div className="font-mono text-[11px] text-text-muted">
+                      revoked {formatRelativeTime(key.revoked_at)}
+                    </div>
+                  </div>
+                  <Tag variant="neutral">
+                    {key.key_prefix}
+                    …
+                  </Tag>
+                </Card>
+              ))}
             </div>
           </details>
         )}
-      </div>
+      </section>
+
+      {/* Usage example */}
+      <section className="space-y-5">
+        <SectionMarker number="05" label="USAGE" />
+        <Card variant="default" className="p-6">
+          <h3 className="text-base font-semibold text-text-primary">
+            Using your key
+          </h3>
+          <pre className="mt-4 overflow-x-auto rounded-md bg-bg-base/80 p-4 font-mono text-xs text-text-secondary">
+{`import { MandateZClient } from '@mandatez/sdk';
+
+// New (enterprise-friendly) — one string, revocable from this page
+const client = new MandateZClient({
+  apiKey: 'mz_live_...',
+  agentId: 'ag_...',
+  ownerId: '...',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+});
+
+// The old config still works — raw Supabase URL + anon key:
+const legacy = new MandateZClient({
+  agentId: 'ag_...',
+  ownerId: '...',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+});`}
+          </pre>
+        </Card>
+      </section>
     </div>
   );
 }

@@ -11,8 +11,10 @@ export default function OrganizationSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-semibold">Organization settings</h2>
-        <p className="text-gray-400 mt-1">
+        <h2 className="text-2xl font-semibold text-text-primary">
+          Organization settings
+        </h2>
+        <p className="mt-1 text-text-secondary max-w-2xl">
           Admin-only controls. Ownership transfer is permanent.
         </p>
       </div>

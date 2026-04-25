@@ -2,6 +2,14 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import {
+  Button,
+  Card,
+  EmptyState,
+  SectionMarker,
+  Tag,
+  cn,
+} from '@/components/ui';
 
 type Role = 'admin' | 'security_analyst' | 'viewer';
 
@@ -37,11 +45,20 @@ const ROLE_DESCRIPTIONS: Record<Role, string> = {
   viewer: 'Read-only access to events, agents, and reports.',
 };
 
+const ROLE_TAG_VARIANT: Record<Role, 'info' | 'neutral'> = {
+  admin: 'info',
+  security_analyst: 'info',
+  viewer: 'neutral',
+};
+
 type Status =
   | { kind: 'idle' }
   | { kind: 'loading' }
   | { kind: 'success'; message: string }
   | { kind: 'error'; message: string };
+
+const inputClasses =
+  'w-full rounded-md border border-border-default bg-bg-base px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-accent-primary focus:outline-none transition-colors';
 
 export default function OrganizationClient() {
   const [userId, setUserId] = useState('');
@@ -64,9 +81,10 @@ export default function OrganizationClient() {
   const [newOrgEmail, setNewOrgEmail] = useState('');
 
   const loadOrgs = useCallback(async (uid: string) => {
-    const res = await fetch(`/api/organizations?user_id=${encodeURIComponent(uid)}`, {
-      credentials: 'include',
-    });
+    const res = await fetch(
+      `/api/organizations?user_id=${encodeURIComponent(uid)}`,
+      { credentials: 'include' },
+    );
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || 'Failed to load organizations');
     return json.organizations as Organization[];
@@ -177,11 +195,17 @@ export default function OrganizationClient() {
       if (!res.ok) throw new Error(json.error || 'Create failed');
 
       window.localStorage.setItem('mandatez_owner_id', userId.trim());
-      window.localStorage.setItem('mandatez_current_org_id', json.organization.id);
+      window.localStorage.setItem(
+        'mandatez_current_org_id',
+        json.organization.id,
+      );
       setNewOrgName('');
       setNewOrgSlug('');
       setNewOrgEmail('');
-      setStatus({ kind: 'success', message: `Organization "${json.organization.name}" created.` });
+      setStatus({
+        kind: 'success',
+        message: `Organization "${json.organization.name}" created.`,
+      });
       window.dispatchEvent(new Event('mandatez:org-changed'));
       await refresh(userId.trim());
     } catch (err) {
@@ -257,7 +281,7 @@ export default function OrganizationClient() {
       );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Update failed');
-      setStatus({ kind: 'success', message: `Role updated.` });
+      setStatus({ kind: 'success', message: 'Role updated.' });
       await refresh(userId);
     } catch (err) {
       setStatus({
@@ -295,258 +319,372 @@ export default function OrganizationClient() {
 
   const isAdmin = myRole === 'admin';
   const isOwner = org?.owner_id === userId;
+  const pendingMembers = members.filter((m) => !m.accepted_at);
+  const acceptedMembers = members.filter((m) => m.accepted_at);
+  const onlyFounder =
+    org && acceptedMembers.length <= 1 && pendingMembers.length === 0;
 
   return (
-    <div className="space-y-8">
-      {/* User ID bootstrap */}
-      <SectionCard
-        label="A · Identity"
-        title="Your MandateZ user ID"
-        description="The dashboard still uses the shared owner/user id while auth is wired."
-      >
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="owner_123"
-            className="flex-1 rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono"
-          />
-          <button
-            onClick={() => {
-              if (userId.trim()) {
-                window.localStorage.setItem('mandatez_owner_id', userId.trim());
-                void refresh(userId.trim());
-              }
-            }}
-            disabled={loading || !userId.trim()}
-            className="px-4 py-2 text-sm border border-gray-700 rounded-md text-gray-300 hover:border-gray-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Loading…' : 'Load'}
-          </button>
-        </div>
-      </SectionCard>
+    <div className="space-y-12">
+      {/* Identity */}
+      <section className="space-y-5">
+        <SectionMarker number="01" label="ORGANIZATION" />
+        <Card variant="elevated" className="p-6">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-text-primary">
+                Your MandateZ user ID
+              </h3>
+              <p className="mt-1 text-sm text-text-secondary">
+                The dashboard still uses the shared owner/user id while auth is
+                wired.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="owner_123"
+                className={cn(inputClasses, 'flex-1 font-mono')}
+              />
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (userId.trim()) {
+                    window.localStorage.setItem(
+                      'mandatez_owner_id',
+                      userId.trim(),
+                    );
+                    void refresh(userId.trim());
+                  }
+                }}
+                disabled={loading || !userId.trim()}
+                loading={loading}
+              >
+                Load
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </section>
 
       {/* No orgs — create first */}
       {!loading && userId && orgs.length === 0 && (
-        <SectionCard
-          label="B · Bootstrap"
-          title="Create your first organization"
-          description="You'll become the owner and first admin."
-        >
-          <div className="space-y-3">
-            <input
-              type="text"
-              value={newOrgName}
-              onChange={(e) => setNewOrgName(e.target.value)}
-              placeholder="Acme Corp Security"
-              className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
-            />
-            <input
-              type="text"
-              value={newOrgSlug}
-              onChange={(e) => setNewOrgSlug(e.target.value)}
-              placeholder="acme-corp (optional — auto-generated from name)"
-              className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono"
-            />
-            <input
-              type="email"
-              value={newOrgEmail}
-              onChange={(e) => setNewOrgEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
-            />
-            <button
-              onClick={createOrg}
-              disabled={!newOrgName.trim() || !newOrgEmail.trim()}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
-            >
-              Create organization
-            </button>
-          </div>
-        </SectionCard>
+        <section className="space-y-5">
+          <SectionMarker number="02" label="BOOTSTRAP" />
+          <Card variant="elevated" className="p-6">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-text-primary">
+                  Create your first organization
+                </h3>
+                <p className="mt-1 text-sm text-text-secondary">
+                  You&apos;ll become the owner and first admin.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <Field label="Name">
+                  <input
+                    type="text"
+                    value={newOrgName}
+                    onChange={(e) => setNewOrgName(e.target.value)}
+                    placeholder="Acme Corp Security"
+                    className={inputClasses}
+                  />
+                </Field>
+                <Field
+                  label="Slug"
+                  hint="Lowercase letters, digits, and hyphens. Auto-generated if blank."
+                >
+                  <input
+                    type="text"
+                    value={newOrgSlug}
+                    onChange={(e) => setNewOrgSlug(e.target.value)}
+                    placeholder="acme-corp"
+                    className={cn(inputClasses, 'font-mono')}
+                  />
+                </Field>
+                <Field label="Email">
+                  <input
+                    type="email"
+                    value={newOrgEmail}
+                    onChange={(e) => setNewOrgEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className={inputClasses}
+                  />
+                </Field>
+                <Button
+                  variant="primary"
+                  onClick={createOrg}
+                  disabled={!newOrgName.trim() || !newOrgEmail.trim()}
+                  loading={status.kind === 'loading'}
+                >
+                  Create organization
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </section>
       )}
 
       {/* Active org detail */}
       {org && (
         <>
-          <SectionCard
-            label="B · Organization"
-            title={org.name}
-            description={`${org.slug} · created ${new Date(org.created_at).toLocaleDateString()}`}
-          >
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-gray-700 bg-gray-900/60">
-                <span className="text-gray-500 text-xs uppercase tracking-wider">
-                  Your role
-                </span>
-                <span className="font-medium text-gray-100">
-                  {myRole ? ROLE_LABELS[myRole] : '—'}
-                </span>
-              </span>
-              {isOwner && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-emerald-700/60 bg-emerald-950/30 text-emerald-300 text-xs">
-                  Owner
-                </span>
-              )}
-              <Link
-                href="/organization/settings"
-                className="ml-auto text-sm text-blue-400 hover:text-blue-300 underline underline-offset-4"
-              >
-                Organization settings →
-              </Link>
-            </div>
-
-            {orgs.length > 1 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="text-xs text-gray-500 uppercase tracking-wider self-center">
-                  Switch org:
-                </span>
-                {orgs.map((o) => (
-                  <button
-                    key={o.id}
-                    onClick={() => switchOrg(o.id)}
-                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                      o.id === activeOrgId
-                        ? 'border-blue-500 bg-blue-950/40 text-blue-200'
-                        : 'border-gray-800 text-gray-400 hover:border-gray-600 hover:text-gray-200'
-                    }`}
+          <section className="space-y-5">
+            <SectionMarker number="02" label="DETAILS" />
+            <Card variant="elevated" className="p-6">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-text-primary">
+                      {org.name}
+                    </h3>
+                    <p className="mt-1 font-mono text-xs text-text-muted">
+                      {org.slug} · created{' '}
+                      {new Date(org.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Link
+                    href="/organization/settings"
+                    className="text-sm text-accent-primary underline underline-offset-4 hover:text-accent-primary-hover"
                   >
-                    {o.name}
-                  </button>
-                ))}
+                    Organization settings →
+                  </Link>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Tag variant="neutral">
+                    Role: {myRole ? ROLE_LABELS[myRole] : '—'}
+                  </Tag>
+                  {isOwner && <Tag variant="success">OWNER</Tag>}
+                </div>
+
+                {orgs.length > 1 && (
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border-subtle pt-4">
+                    <span className="font-mono text-xs uppercase tracking-widest text-text-muted">
+                      Switch org:
+                    </span>
+                    {orgs.map((o) => (
+                      <button
+                        key={o.id}
+                        onClick={() => switchOrg(o.id)}
+                        className={cn(
+                          'rounded-full border px-3 py-1 text-xs transition-colors',
+                          o.id === activeOrgId
+                            ? 'border-accent-primary bg-accent-primary/10 text-accent-primary'
+                            : 'border-border-default text-text-secondary hover:border-border-strong hover:text-text-primary',
+                        )}
+                      >
+                        {o.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </SectionCard>
+            </Card>
+          </section>
 
           {/* Invite (admin only) */}
           {isAdmin && (
-            <SectionCard
-              label="C · Invite"
-              title="Invite a team member"
-              description="Pick the smallest role that fits. You can change roles any time."
-            >
-              <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
-                <input
-                  type="text"
-                  value={inviteeId}
-                  onChange={(e) => setInviteeId(e.target.value)}
-                  placeholder="user id"
-                  className="rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono"
-                />
-                <input
-                  type="email"
-                  value={inviteeEmail}
-                  onChange={(e) => setInviteeEmail(e.target.value)}
-                  placeholder="analyst@company.com"
-                  className="rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
-                />
-                <select
-                  value={inviteeRole}
-                  onChange={(e) => setInviteeRole(e.target.value as Role)}
-                  className="rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="security_analyst">Security analyst</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <button
-                  onClick={invite}
-                  disabled={!inviteeId.trim() || !inviteeEmail.trim()}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
-                >
-                  Invite
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">
-                {ROLE_DESCRIPTIONS[inviteeRole]}
-              </p>
-            </SectionCard>
+            <section className="space-y-5">
+              <SectionMarker number="03" label="INVITE" />
+              <Card variant="elevated" className="p-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-text-primary">
+                      Invite a team member
+                    </h3>
+                    <p className="mt-1 text-sm text-text-secondary">
+                      Pick the smallest role that fits. You can change roles
+                      any time.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto]">
+                    <input
+                      type="text"
+                      value={inviteeId}
+                      onChange={(e) => setInviteeId(e.target.value)}
+                      placeholder="user id"
+                      className={cn(inputClasses, 'font-mono')}
+                    />
+                    <input
+                      type="email"
+                      value={inviteeEmail}
+                      onChange={(e) => setInviteeEmail(e.target.value)}
+                      placeholder="analyst@company.com"
+                      className={inputClasses}
+                    />
+                    <select
+                      value={inviteeRole}
+                      onChange={(e) => setInviteeRole(e.target.value as Role)}
+                      className={inputClasses}
+                    >
+                      <option value="viewer">Viewer</option>
+                      <option value="security_analyst">Security analyst</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <Button
+                      variant="primary"
+                      onClick={invite}
+                      disabled={!inviteeId.trim() || !inviteeEmail.trim()}
+                    >
+                      Send invite
+                    </Button>
+                  </div>
+                  <p className="text-xs text-text-muted">
+                    {ROLE_DESCRIPTIONS[inviteeRole]}
+                  </p>
+                </div>
+              </Card>
+            </section>
           )}
 
-          {/* Members list */}
-          <SectionCard
-            label="D · Members"
-            title={`${members.length} member${members.length === 1 ? '' : 's'}`}
-            description="Admins can change roles or remove members. The owner cannot be removed."
-          >
-            <div className="space-y-2">
-              {members.map((m) => {
-                const isThisOwner = m.user_id === org.owner_id;
-                const isSelf = m.user_id === userId;
-                return (
-                  <div
+          {/* Pending invites */}
+          {pendingMembers.length > 0 && (
+            <section className="space-y-5">
+              <SectionMarker number="04" label="PENDING INVITES" />
+              <div className="space-y-2">
+                {pendingMembers.map((m) => (
+                  <Card
                     key={m.id}
-                    className="flex flex-wrap items-center gap-3 border border-gray-800 rounded-md bg-gray-950/40 p-3"
+                    variant="default"
+                    className="flex flex-wrap items-center gap-3 p-4"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-gray-100 font-medium truncate">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-text-primary">
                         {m.email}
-                        {isSelf && (
-                          <span className="ml-2 text-xs text-gray-500">(you)</span>
-                        )}
                       </div>
-                      <div className="text-[11px] text-gray-500 font-mono truncate">
+                      <div className="truncate font-mono text-[11px] text-text-muted">
                         {m.user_id}
                       </div>
                     </div>
-
-                    {isAdmin && !isThisOwner ? (
-                      <select
-                        value={m.role}
-                        onChange={(e) => changeRole(m.user_id, e.target.value as Role)}
-                        className="text-xs rounded-md border border-gray-800 bg-gray-900/50 px-2 py-1 text-gray-200 focus:border-blue-500 focus:outline-none"
-                      >
-                        <option value="viewer">Viewer</option>
-                        <option value="security_analyst">Security analyst</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    ) : (
-                      <span className="text-xs text-gray-300 px-2">
-                        {ROLE_LABELS[m.role]}
-                      </span>
+                    <Tag variant={ROLE_TAG_VARIANT[m.role]}>
+                      {ROLE_LABELS[m.role]}
+                    </Tag>
+                    <Tag variant="warning">PENDING</Tag>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => invite()}
+                          disabled
+                          title="Resend coming soon"
+                        >
+                          Resend
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeMember(m.user_id, m.email)}
+                          className="text-accent-danger hover:text-accent-danger"
+                        >
+                          Revoke
+                        </Button>
+                      </div>
                     )}
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
 
-                    {isThisOwner && (
-                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded border border-emerald-700/60 bg-emerald-950/30 text-emerald-300">
-                        Owner
-                      </span>
-                    )}
+          {/* Members */}
+          <section className="space-y-5">
+            <SectionMarker
+              number={isAdmin ? '05' : '03'}
+              label={`MEMBERS · ${members.length}`}
+            />
+            {onlyFounder ? (
+              <EmptyState
+                title="No team members yet"
+                description="You're flying solo. Invite a teammate above to share oversight, approvals, and reporting access."
+              />
+            ) : (
+              <div className="space-y-2">
+                {acceptedMembers.map((m) => {
+                  const isThisOwner = m.user_id === org.owner_id;
+                  const isSelf = m.user_id === userId;
+                  return (
+                    <Card
+                      key={m.id}
+                      variant="default"
+                      className="flex flex-wrap items-center gap-3 p-4"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-text-primary">
+                          {m.email}
+                          {isSelf && (
+                            <span className="ml-2 text-xs text-text-muted">
+                              (you)
+                            </span>
+                          )}
+                        </div>
+                        <div className="truncate font-mono text-[11px] text-text-muted">
+                          {m.user_id}
+                        </div>
+                      </div>
 
-                    {!m.accepted_at && (
-                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded border border-amber-700/60 bg-amber-950/30 text-amber-300">
-                        Pending
-                      </span>
-                    )}
+                      {isAdmin && !isThisOwner ? (
+                        <select
+                          value={m.role}
+                          onChange={(e) =>
+                            changeRole(m.user_id, e.target.value as Role)
+                          }
+                          className={cn(inputClasses, 'w-auto py-1 text-xs')}
+                        >
+                          <option value="viewer">Viewer</option>
+                          <option value="security_analyst">
+                            Security analyst
+                          </option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      ) : (
+                        <Tag variant={ROLE_TAG_VARIANT[m.role]}>
+                          {ROLE_LABELS[m.role]}
+                        </Tag>
+                      )}
 
-                    {isAdmin && !isThisOwner && (
-                      <button
-                        onClick={() => removeMember(m.user_id, m.email)}
-                        className="text-xs px-2.5 py-1 rounded border border-red-900/60 bg-red-950/30 text-red-300 hover:bg-red-900/40 hover:border-red-700 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </SectionCard>
+                      {isThisOwner && <Tag variant="success">OWNER</Tag>}
+
+                      {isAdmin && !isThisOwner && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeMember(m.user_id, m.email)}
+                          className="text-accent-danger hover:text-accent-danger"
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
           {/* Danger zone */}
           {isOwner && (
-            <SectionCard
-              label="E · Danger zone"
-              title="Delete organization"
-              description="Deletes the org and all member rows. Agents, events, and reports are NOT deleted — they remain owned by the owner's user id."
-            >
-              <button
-                onClick={deleteOrg}
-                className="px-5 py-2.5 border border-red-800 bg-red-950/40 hover:bg-red-900/50 text-red-200 text-sm font-medium rounded-md transition-colors"
-              >
-                Delete {org.name}
-              </button>
-            </SectionCard>
+            <section className="space-y-5">
+              <SectionMarker number="06" label="DANGER ZONE" />
+              <Card variant="danger-tinted" className="p-6">
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold text-text-primary">
+                    Delete organization
+                  </h3>
+                  <p className="text-sm text-text-secondary">
+                    Deletes the org and all member rows. Agents, events, and
+                    reports are NOT deleted — they remain owned by the
+                    owner&apos;s user id.
+                  </p>
+                  <Button variant="destructive" onClick={deleteOrg}>
+                    Delete {org.name}
+                  </Button>
+                </div>
+              </Card>
+            </section>
           )}
         </>
       )}
@@ -556,30 +694,23 @@ export default function OrganizationClient() {
   );
 }
 
-/* ----------------------------- primitives ------------------------------ */
-
-function SectionCard({
+function Field({
   label,
-  title,
-  description,
+  hint,
   children,
 }: {
   label: string;
-  title: string;
-  description: string;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="border border-gray-800 rounded-lg p-6 space-y-5 bg-gray-950/40">
-      <div>
-        <div className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">
-          {label}
-        </div>
-        <h3 className="text-lg font-semibold mt-2">{title}</h3>
-        <p className="text-sm text-gray-500 mt-1">{description}</p>
-      </div>
+    <div className="space-y-1.5">
+      <label className="font-mono text-xs uppercase tracking-widest text-text-muted">
+        {label}
+      </label>
       {children}
-    </section>
+      {hint && <p className="text-xs text-text-muted">{hint}</p>}
+    </div>
   );
 }
 
@@ -587,8 +718,14 @@ function StatusBanner({ status }: { status: Status }) {
   if (status.kind === 'idle' || status.kind === 'loading') return null;
   if (status.kind === 'success') {
     return (
-      <div className="text-xs text-emerald-300 font-mono">✓ {status.message}</div>
+      <div className="font-mono text-xs text-accent-success">
+        ✓ {status.message}
+      </div>
     );
   }
-  return <div className="text-xs text-red-300 font-mono">✗ {status.message}</div>;
+  return (
+    <div className="font-mono text-xs text-accent-danger">
+      ✗ {status.message}
+    </div>
+  );
 }
