@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Syne } from 'next/font/google';
 import {
   Button,
   Card,
@@ -11,12 +10,6 @@ import {
   SectionMarker,
   Tag,
 } from '@/components/ui';
-
-const syne = Syne({
-  subsets: ['latin'],
-  weight: ['500', '600', '700', '800'],
-  display: 'swap',
-});
 
 const DASHBOARD_URL = 'https://core-dashboard-black.vercel.app';
 
@@ -124,40 +117,39 @@ export default function RulesPage() {
           <SectionMarker number="01" label="OWASP AGENTIC TOP 10" />
 
           <h1
-            className={`${syne.className} mt-6 max-w-4xl font-extrabold tracking-[-0.025em] leading-[0.98] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]`}
-            style={{ fontSize: 'clamp(2.5rem, 7vw, 5.25rem)' }}
+            className="font-display mt-4 max-w-4xl font-extrabold tracking-[-0.025em] leading-[1.02] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
+            style={{ fontSize: 'clamp(2rem, 4.5vw, 3.75rem)' }}
           >
-            Every AI agent risk,
-            <br />
-            mapped to a MandateZ control<span className="text-blue-500">.</span>
+            Every AI agent risk, mapped to a MandateZ control
+            <span className="text-blue-500">.</span>
           </h1>
 
-          <p className="mt-8 max-w-2xl text-[16px] leading-relaxed text-text-secondary md:text-[18px]">
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-text-secondary md:text-[17px]">
             MandateZ ships templates and detection for all ten OWASP Agentic
             risks. Generated reports map your signed event stream against this
             framework — auditor-ready, in seconds.
           </p>
 
-          <div className="mt-16 space-y-5">
+          <div className="mt-12 space-y-4">
             {ASI_RISKS.map((risk) => (
               <Card
                 key={risk.code}
                 variant="default"
                 className="overflow-hidden"
               >
-                <CardHeader className="gap-3">
+                <CardHeader className="gap-3 p-6">
                   <div className="flex items-center gap-3">
                     <Tag variant="info">{risk.code}</Tag>
                     <span className="h-px flex-1 bg-border-subtle" />
                   </div>
-                  <CardTitle className="text-[20px] md:text-[22px]">
+                  <CardTitle className="font-display text-[19px] md:text-[21px]">
                     {risk.name}
                   </CardTitle>
-                  <CardDescription className="text-[15px] leading-relaxed">
+                  <CardDescription className="text-[14.5px] leading-relaxed">
                     {risk.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-6 pb-6">
                   <Card variant="success-tinted" className="p-5">
                     <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-accent-success">
                       MandateZ control
@@ -177,16 +169,14 @@ export default function RulesPage() {
         <div className="mx-auto max-w-5xl px-6 md:px-10 lg:px-16">
           <Card
             variant="default"
-            className="flex flex-col items-start justify-between gap-5 p-8 md:flex-row md:items-center"
+            className="flex flex-col items-start justify-between gap-5 p-7 md:flex-row md:items-center"
           >
             <div>
               <Tag variant="info">Compliance</Tag>
-              <h2
-                className={`${syne.className} mt-3 text-[24px] font-bold tracking-tight text-text-primary md:text-[28px]`}
-              >
+              <h2 className="font-display mt-3 text-[22px] font-bold tracking-tight text-text-primary md:text-[24px]">
                 Generate an OWASP Agentic Top 10 compliance report
               </h2>
-              <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-text-secondary">
+              <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-text-secondary">
                 One-click export of your agent’s signed event stream mapped
                 against ASI-01 through ASI-10. PDF + JSON, auditor-ready.
               </p>

@@ -188,7 +188,7 @@ function IncidentCard({ incident }: { incident: Incident }) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="mb-3 flex min-h-[2rem] flex-wrap items-center gap-x-2 gap-y-2">
               {incident.pinned && <Tag variant="info">Pinned</Tag>}
               {incident.live && (
                 <Tag variant="info" className="inline-flex items-center gap-1.5">
@@ -204,7 +204,7 @@ function IncidentCard({ incident }: { incident: Incident }) {
               )}
             </div>
 
-            <h3 className="text-[17px] leading-snug text-text-primary transition-colors group-hover:text-accent-primary-hover md:text-[19px]">
+            <h3 className="mt-3 text-[17px] leading-snug text-text-primary transition-colors group-hover:text-accent-primary-hover md:text-[19px]">
               {incident.title}
             </h3>
 

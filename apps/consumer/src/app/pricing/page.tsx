@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { Syne, JetBrains_Mono } from 'next/font/google';
 import {
   Button,
   Card,
@@ -8,18 +7,6 @@ import {
   SectionMarker,
   Tag,
 } from '@/components/ui';
-
-const syne = Syne({
-  subsets: ['latin'],
-  weight: ['500', '600', '700', '800'],
-  display: 'swap',
-});
-
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  display: 'swap',
-});
 
 const TIERS = [
   {
@@ -74,28 +61,27 @@ export default function PricingPage() {
           <SectionMarker number="01" label="PRICING" />
 
           <h1
-            className={`${syne.className} mt-6 max-w-4xl font-extrabold tracking-[-0.025em] leading-[0.98] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]`}
-            style={{ fontSize: 'clamp(2.5rem, 7vw, 5.25rem)' }}
+            className="font-display mt-4 max-w-4xl font-extrabold tracking-[-0.025em] leading-[1.02] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
+            style={{ fontSize: 'clamp(2rem, 4.5vw, 3.75rem)' }}
           >
-            Built for the scale
-            <br />
-            of your mandate<span className="text-blue-500">.</span>
+            Built for the scale of your mandate
+            <span className="text-blue-500">.</span>
           </h1>
 
-          <p className="mt-6 max-w-2xl text-[16px] leading-relaxed text-white/55 md:text-[17px]">
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-white/55 md:text-[16px]">
             Start with personal agents. Scale to teams. Generate auditor-ready
-            compliance reports on demand. <span className="text-white">No
-            consultants. No waiting.</span>
+            compliance reports on demand.{' '}
+            <span className="text-white">No consultants. No waiting.</span>
           </p>
 
-          <div className="mt-16 grid gap-5 md:grid-cols-3">
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
             {TIERS.map((tier) => (
               <Card
                 key={tier.name}
                 variant="elevated"
-                className={`relative flex flex-col p-8 transition-all ${
+                className={`relative flex flex-col p-7 transition-colors ${
                   tier.highlight
-                    ? 'border-blue-500/60 bg-[radial-gradient(ellipse_at_top,rgba(37,99,235,0.12),transparent_60%)]'
+                    ? 'border-blue-500/60 bg-[radial-gradient(ellipse_at_top,rgba(37,99,235,0.10),transparent_60%)]'
                     : 'hover:border-border-strong'
                 }`}
               >
@@ -112,13 +98,11 @@ export default function PricingPage() {
                   {tier.blurb}
                 </Tag>
 
-                <h3
-                  className={`${syne.className} mt-3 text-[24px] font-bold tracking-tight text-text-primary`}
-                >
+                <h3 className="font-display mt-3 text-[22px] font-bold tracking-tight text-text-primary">
                   {tier.name}
                 </h3>
 
-                <div className="mt-6">
+                <div className="mt-5">
                   <NumberDisplay
                     value={tier.price}
                     suffix={tier.cadence}
@@ -126,7 +110,7 @@ export default function PricingPage() {
                   />
                 </div>
 
-                <ul className="mt-8 space-y-3 flex-1">
+                <ul className="mt-7 flex-1 space-y-2.5">
                   {tier.bullets.map((b) => (
                     <li
                       key={b}
@@ -153,7 +137,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
 
-                <div className="mt-10">
+                <div className="mt-8">
                   <Button
                     asChild
                     variant={tier.highlight ? 'primary' : 'secondary'}
@@ -173,17 +157,15 @@ export default function PricingPage() {
         <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
           <Card
             variant="success-tinted"
-            className="flex flex-col items-start justify-between gap-5 p-8 md:flex-row md:items-center"
+            className="flex flex-col items-start justify-between gap-5 p-7 md:flex-row md:items-center"
           >
             <div>
               <Tag variant="success">One-time</Tag>
-              <h2
-                className={`${syne.className} mt-3 text-[24px] font-bold tracking-tight text-text-primary md:text-[28px]`}
-              >
+              <h2 className="font-display mt-3 text-[22px] font-bold tracking-tight text-text-primary md:text-[24px]">
                 Compliance Audit Report{' '}
                 <span className="text-text-muted">·</span> $500
               </h2>
-              <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-text-secondary">
+              <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-text-secondary">
                 OWASP Agentic Top 10, EU AI Act, or HIPAA pack generated from
                 your signed event stream. Auditor-ready PDF in seconds.
               </p>
@@ -195,9 +177,7 @@ export default function PricingPage() {
             </Button>
           </Card>
 
-          <p
-            className={`${mono.className} mt-12 text-[11px] uppercase tracking-[0.25em] text-text-muted`}
-          >
+          <p className="mt-10 font-mono text-[11px] uppercase tracking-[0.25em] text-text-muted">
             Need enterprise compliance or white-label?{' '}
             <Link
               href="/enterprise"

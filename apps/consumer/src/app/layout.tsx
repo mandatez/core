@@ -66,7 +66,7 @@ export default function RootLayout({
       className={`${syne.variable} ${inter.variable} ${jetbrains.variable}`}
     >
       <body className="text-text-primary min-h-screen font-sans">
-        <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border-subtle px-8 md:px-16 lg:px-24 py-4">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/80 backdrop-blur-xl border-b border-white/[0.06] px-8 md:px-16 lg:px-24 py-4">
           <div className="flex items-center gap-8">
             <Link href="/" className="text-xl font-black tracking-tight font-display">
               Mandate<span className="text-accent-primary">Z</span>
