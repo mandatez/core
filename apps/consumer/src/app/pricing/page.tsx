@@ -1,110 +1,213 @@
 import Link from 'next/link';
+import { Syne, JetBrains_Mono } from 'next/font/google';
+import {
+  Button,
+  Card,
+  NumberDisplay,
+  Section,
+  SectionMarker,
+  Tag,
+} from '@/components/ui';
+
+const syne = Syne({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800'],
+  display: 'swap',
+});
+
+const mono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '700'],
+  display: 'swap',
+});
 
 const TIERS = [
   {
-    name: 'Free',
-    price: '$0',
-    period: '/mo',
-    description: 'Everything you need to see what your AI is doing.',
-    features: [
-      'Unlimited agents',
-      'Full event logging',
-      'Basic dashboard',
-      'Community support',
+    name: 'Consumer Pro',
+    price: '$19.99',
+    cadence: '/mo',
+    blurb: 'For individual developers',
+    bullets: [
+      'Unlimited personal agents',
+      'Full audit trail',
+      'Signed events + Ed25519',
     ],
-    cta: 'Get started',
-    href: '/activity',
-    highlighted: false,
+    cta: 'Start free',
+    ctaHref: '/login',
+    highlight: false,
   },
   {
-    name: 'Pro',
-    price: '$9.99',
-    period: '/mo',
-    description: 'Full control, full enforcement, full visibility.',
-    features: [
-      'Everything in Free',
-      'Compliance exports',
-      'Policy engine',
-      'Human oversight gate',
+    name: 'Dashboard Starter',
+    price: '$499',
+    cadence: '/mo',
+    blurb: 'For teams deploying agents',
+    bullets: [
+      'Up to 25 team agents',
+      'Runtime policy engine',
       'Slack + webhook alerts',
-      'Email support',
     ],
-    cta: 'Upgrade to Pro',
-    href: '/activity',
-    highlighted: true,
+    cta: 'Get started',
+    ctaHref: '/login',
+    highlight: true,
   },
-];
+  {
+    name: 'Dashboard Business',
+    price: '$1,499',
+    cadence: '/mo',
+    blurb: 'For enterprises',
+    bullets: [
+      'Unlimited agents',
+      'SSO + RBAC',
+      'Priority incident response',
+    ],
+    cta: 'Talk to sales',
+    ctaHref: '/enterprise',
+    highlight: false,
+  },
+] as const;
 
 export default function PricingPage() {
   return (
-    <div className="py-16 md:py-24 pt-24 pl-8 md:pl-16 lg:pl-24 pr-8 md:pr-16 lg:pr-24">
-      <div className="mb-16">
-        <h2 className="text-3xl md:text-4xl font-black tracking-tight uppercase">
-          Pricing
-        </h2>
-        <p className="mt-4 text-gray-400 text-lg max-w-lg">
-          Start free. Upgrade when your agents need more.
-        </p>
-      </div>
+    <div className="relative min-h-screen bg-[#080808] text-white">
+      <Section className="relative">
+        <div className="mx-auto max-w-7xl px-6 pt-24 md:px-10 lg:px-16">
+          <SectionMarker number="01" label="PRICING" />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
-        {TIERS.map((tier) => (
-          <div
-            key={tier.name}
-            className={`rounded-lg p-8 flex flex-col ${
-              tier.highlighted
-                ? 'border-2 border-blue-500 relative'
-                : 'border border-gray-800'
-            }`}
+          <h1
+            className={`${syne.className} mt-6 max-w-4xl font-extrabold tracking-[-0.025em] leading-[0.98] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]`}
+            style={{ fontSize: 'clamp(2.5rem, 7vw, 5.25rem)' }}
           >
-            {tier.highlighted && (
-              <span className="absolute -top-3 left-8 bg-blue-500 text-white text-xs font-semibold tracking-wide uppercase px-3 py-1 rounded">
-                Recommended
-              </span>
-            )}
+            Built for the scale
+            <br />
+            of your mandate<span className="text-blue-500">.</span>
+          </h1>
 
-            <h3 className="text-lg font-semibold text-gray-100">
-              {tier.name}
-            </h3>
-            <div className="mt-4 flex items-baseline gap-1">
-              <span className="text-4xl font-black tracking-tight text-gray-100">
-                {tier.price}
-              </span>
-              <span className="text-gray-500 text-sm">{tier.period}</span>
-            </div>
-            <p className="mt-3 text-sm text-gray-500">
-              {tier.description}
-            </p>
+          <p className="mt-6 max-w-2xl text-[16px] leading-relaxed text-white/55 md:text-[17px]">
+            Start with personal agents. Scale to teams. Generate auditor-ready
+            compliance reports on demand. <span className="text-white">No
+            consultants. No waiting.</span>
+          </p>
 
-            <ul className="mt-8 space-y-3 flex-1">
-              {tier.features.map((feature) => (
-                <li key={feature} className="text-sm text-gray-300 flex items-start gap-3">
-                  <span className="text-blue-400 mt-0.5 shrink-0">—</span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
+          <div className="mt-16 grid gap-5 md:grid-cols-3">
+            {TIERS.map((tier) => (
+              <Card
+                key={tier.name}
+                variant="elevated"
+                className={`relative flex flex-col p-8 transition-all ${
+                  tier.highlight
+                    ? 'border-blue-500/60 bg-[radial-gradient(ellipse_at_top,rgba(37,99,235,0.12),transparent_60%)]'
+                    : 'hover:border-border-strong'
+                }`}
+              >
+                {tier.highlight && (
+                  <Tag
+                    variant="info"
+                    className="absolute -top-3 left-6 bg-[#080808]"
+                  >
+                    Most Popular
+                  </Tag>
+                )}
 
-            <Link
-              href={tier.href}
-              className={`mt-10 block text-center px-6 py-3 text-sm font-medium tracking-wide uppercase rounded transition-colors ${
-                tier.highlighted
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : 'border border-gray-700 hover:border-gray-400 text-gray-300 hover:text-white'
-              }`}
-            >
-              {tier.cta}
-            </Link>
+                <Tag variant="default" className="self-start">
+                  {tier.blurb}
+                </Tag>
+
+                <h3
+                  className={`${syne.className} mt-3 text-[24px] font-bold tracking-tight text-text-primary`}
+                >
+                  {tier.name}
+                </h3>
+
+                <div className="mt-6">
+                  <NumberDisplay
+                    value={tier.price}
+                    suffix={tier.cadence}
+                    size="sm"
+                  />
+                </div>
+
+                <ul className="mt-8 space-y-3 flex-1">
+                  {tier.bullets.map((b) => (
+                    <li
+                      key={b}
+                      className="flex items-start gap-3 text-[14px] text-text-secondary"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#10B981"
+                        strokeWidth="2.2"
+                        className="mt-1 shrink-0"
+                        aria-hidden
+                      >
+                        <path
+                          d="M4 12l5 5L20 6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-10">
+                  <Button
+                    asChild
+                    variant={tier.highlight ? 'primary' : 'secondary'}
+                    size="md"
+                    className="w-full"
+                  >
+                    <Link href={tier.ctaHref}>{tier.cta}</Link>
+                  </Button>
+                </div>
+              </Card>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      </Section>
 
-      <p className="mt-12 text-sm text-gray-500">
-        Need enterprise compliance or white-label?{' '}
-        <Link href="/enterprise" className="text-blue-400 hover:text-blue-300 transition-colors">
-          See enterprise plans &rarr;
-        </Link>
-      </p>
+      <Section tight className="relative border-t border-border-subtle">
+        <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
+          <Card
+            variant="success-tinted"
+            className="flex flex-col items-start justify-between gap-5 p-8 md:flex-row md:items-center"
+          >
+            <div>
+              <Tag variant="success">One-time</Tag>
+              <h2
+                className={`${syne.className} mt-3 text-[24px] font-bold tracking-tight text-text-primary md:text-[28px]`}
+              >
+                Compliance Audit Report{' '}
+                <span className="text-text-muted">·</span> $500
+              </h2>
+              <p className="mt-2 max-w-xl text-[14.5px] leading-relaxed text-text-secondary">
+                OWASP Agentic Top 10, EU AI Act, or HIPAA pack generated from
+                your signed event stream. Auditor-ready PDF in seconds.
+              </p>
+            </div>
+            <Button asChild variant="success" size="md" className="shrink-0">
+              <Link href="/report">
+                Generate a report <span aria-hidden>→</span>
+              </Link>
+            </Button>
+          </Card>
+
+          <p
+            className={`${mono.className} mt-12 text-[11px] uppercase tracking-[0.25em] text-text-muted`}
+          >
+            Need enterprise compliance or white-label?{' '}
+            <Link
+              href="/enterprise"
+              className="text-accent-primary transition-colors hover:text-accent-primary-hover"
+            >
+              See enterprise plans →
+            </Link>
+          </p>
+        </div>
+      </Section>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   ReportPrintButton,
   ReportAutoPrint,
 } from '@/components/report-print-controls';
+import { Button } from '@/components/ui';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -68,9 +69,7 @@ export default function ReportPage() {
 
       {/* Print action bar — hidden when printing */}
       <div className="no-print fixed top-20 right-6 z-40 flex items-center gap-3">
-        <ReportPrintButton
-          className={`${inter.className} inline-flex items-center gap-2 border border-white/15 bg-white/[0.04] px-5 py-2.5 text-[12px] font-medium tracking-wide text-white/85 backdrop-blur-md transition-all hover:border-white/40 hover:bg-white/[0.08] hover:text-white`}
-        />
+        <ReportPrintButton />
       </div>
 
       <article className="report-root mx-auto max-w-4xl px-6 pb-24 pt-40 md:px-10">
@@ -173,21 +172,19 @@ export default function ReportPage() {
             cross-vendor. Five minutes to your first signed event.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <a
-              href="https://mandatez.mintlify.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-[#2563EB] px-7 py-3.5 text-[13px] font-medium tracking-wide text-white transition-all hover:bg-[#1d4ed8] hover:shadow-[0_0_40px_rgba(37,99,235,0.45)]"
-            >
-              mandatez.mintlify.app
-              <span aria-hidden>→</span>
-            </a>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 border border-white/15 bg-white/[0.02] px-7 py-3.5 text-[13px] font-medium tracking-wide text-white/80 transition-all hover:border-white/40 hover:text-white"
-            >
-              Back to mandatez.com
-            </Link>
+            <Button asChild variant="primary" size="lg">
+              <a
+                href="https://mandatez.mintlify.app"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                mandatez.mintlify.app
+                <span aria-hidden>→</span>
+              </a>
+            </Button>
+            <Button asChild variant="secondary" size="lg">
+              <Link href="/">Back to mandatez.com</Link>
+            </Button>
           </div>
         </section>
 

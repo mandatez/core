@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/components/ui';
 
 interface ShareTrustCardProps {
   agentId: string;
@@ -32,79 +33,105 @@ export function ShareTrustCard({ agentId, score, grade, onClose }: ShareTrustCar
   }
 
   return (
-    <div className="border border-gray-800 rounded-lg p-6 space-y-6 bg-gray-950">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-100">Share Your Trust Card</h3>
+    <Card variant="elevated" className="space-y-6 p-6">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 p-0">
+        <CardTitle>Share Your Trust Card</CardTitle>
         {onClose && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onClose}
-            className="p-1.5 rounded hover:bg-gray-800 text-gray-500 hover:text-gray-300 transition-colors"
             aria-label="Close"
+            className="px-2"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
-          </button>
+          </Button>
         )}
-      </div>
+      </CardHeader>
 
-      {/* Card preview */}
-      <div className="flex justify-center">
-        <img
-          src={`/api/trust-card/${agentId}`}
-          alt={`MandateZ Trust Score — ${grade} (${score}/100)`}
-          width={400}
-          className="rounded-lg border border-gray-800"
-        />
-      </div>
-
-      {/* Copy Markdown */}
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">GitHub README Badge</label>
-        <div className="flex gap-2">
-          <pre className="flex-1 text-xs text-gray-400 bg-gray-900 rounded px-3 py-2 overflow-x-auto font-mono whitespace-pre-wrap break-all">
-            {markdown}
-          </pre>
-          <button
-            onClick={() => copyToClipboard(markdown, 'markdown')}
-            className="shrink-0 px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 font-medium transition-colors"
-          >
-            {copied === 'markdown' ? 'Copied!' : 'Copy Markdown'}
-          </button>
+      <CardContent className="space-y-6 p-0">
+        <div className="flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/api/trust-card/${agentId}`}
+            alt={`MandateZ Trust Score — ${grade} (${score}/100)`}
+            width={400}
+            className="rounded-lg border border-border-default"
+          />
         </div>
-      </div>
 
-      {/* Copy HTML */}
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">HTML Embed</label>
-        <div className="flex gap-2">
-          <pre className="flex-1 text-xs text-gray-400 bg-gray-900 rounded px-3 py-2 overflow-x-auto font-mono whitespace-pre-wrap break-all">
-            {html}
-          </pre>
-          <button
-            onClick={() => copyToClipboard(html, 'html')}
-            className="shrink-0 px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 text-sm text-gray-200 font-medium transition-colors"
-          >
-            {copied === 'html' ? 'Copied!' : 'Copy HTML'}
-          </button>
+        <div className="space-y-2">
+          <label className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
+            GitHub README Badge
+          </label>
+          <div className="flex gap-2">
+            <pre className="flex-1 overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-bg-overlay px-3 py-2 font-mono text-xs text-text-secondary">
+              {markdown}
+            </pre>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => copyToClipboard(markdown, 'markdown')}
+              className="shrink-0"
+            >
+              {copied === 'markdown' ? 'Copied!' : 'Copy Markdown'}
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Share on X */}
-      <div className="pt-2">
-        <a
-          href={tweetUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
-        >
-          Share on X
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M7 17l9.2-9.2M17 17V7H7" />
-          </svg>
-        </a>
-      </div>
-    </div>
+        <div className="space-y-2">
+          <label className="font-mono text-[10px] uppercase tracking-[0.25em] text-text-muted">
+            HTML Embed
+          </label>
+          <div className="flex gap-2">
+            <pre className="flex-1 overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-bg-overlay px-3 py-2 font-mono text-xs text-text-secondary">
+              {html}
+            </pre>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => copyToClipboard(html, 'html')}
+              className="shrink-0"
+            >
+              {copied === 'html' ? 'Copied!' : 'Copy HTML'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <Button asChild variant="primary" size="md">
+            <a href={tweetUrl} target="_blank" rel="noopener noreferrer">
+              Share on X
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M7 17l9.2-9.2M17 17V7H7" />
+              </svg>
+            </a>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

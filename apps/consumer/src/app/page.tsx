@@ -2,6 +2,14 @@ import Link from 'next/link';
 import { Syne, JetBrains_Mono, Inter } from 'next/font/google';
 import BreachFeed from '@/components/breach-feed';
 import { REPORT_2026 } from '@/data/governance-report-2026';
+import {
+  Button,
+  Card,
+  NumberDisplay,
+  Section,
+  SectionMarker,
+  Tag,
+} from '@/components/ui';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -31,8 +39,9 @@ export default function LandingPage() {
       <NoiseOverlay />
 
       <Hero />
+      <SocialProof />
       <BreachSection />
-      <VercelSimulation />
+      <DifferenceSection />
       <HowItWorks />
       <TrustScoreSection />
       <ComplianceSection />
@@ -122,11 +131,11 @@ function PageStyles() {
             white-space: pre-wrap;
             word-break: break-word;
           }
-          .mz-code .k  { color: #C792EA; }   /* keyword */
-          .mz-code .s  { color: #A5E8B7; }   /* string */
-          .mz-code .c  { color: rgba(255,255,255,0.35); font-style: italic; } /* comment */
-          .mz-code .n  { color: #82AAFF; }   /* name */
-          .mz-code .p  { color: rgba(255,255,255,0.7); } /* punct */
+          .mz-code .k  { color: #C792EA; }
+          .mz-code .s  { color: #A5E8B7; }
+          .mz-code .c  { color: rgba(255,255,255,0.35); font-style: italic; }
+          .mz-code .n  { color: #82AAFF; }
+          .mz-code .p  { color: rgba(255,255,255,0.7); }
           .mz-code .bad { color: #EF4444; }
           .mz-code .ok  { color: #10B981; }
 
@@ -156,10 +165,8 @@ function NoiseOverlay() {
 function Hero() {
   return (
     <section className="relative isolate overflow-hidden min-h-screen flex items-center">
-      {/* grid */}
       <div className="mz-grid absolute inset-0 -z-10" />
 
-      {/* orbs */}
       <div
         aria-hidden
         className="mz-orb-a absolute -z-10 top-[10%] left-[-6%] h-[55vh] w-[55vh] rounded-full blur-[120px]"
@@ -171,11 +178,9 @@ function Hero() {
         style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.32) 0%, rgba(16,185,129,0) 72%)' }}
       />
 
-      {/* vignette */}
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-transparent to-[#080808]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-6 pt-40 pb-24 md:px-10 lg:px-16">
-        {/* eyebrow */}
         <div className="mz-reveal mz-reveal-1 mb-10 flex items-center gap-3">
           <span className={`${mono.className} text-[10px] uppercase tracking-[0.32em] text-white/40`}>
             MZ · 001 — The Trust Layer for AI Agents
@@ -184,12 +189,12 @@ function Hero() {
         </div>
 
         <h1
-          className={`${syne.className} mz-reveal mz-reveal-2 font-extrabold tracking-[-0.035em] leading-[0.92] text-white`}
-          style={{ fontSize: 'clamp(3.2rem, 10vw, 10.5rem)' }}
+          className={`${syne.className} mz-reveal mz-reveal-2 font-extrabold tracking-[-0.035em] leading-[0.95] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]`}
+          style={{ fontSize: 'clamp(2.5rem, 10vw, 10.5rem)' }}
         >
-          Every agent needs
+          <span className="inline-block">Every agent needs</span>
           <br />
-          <span className="relative inline-block">
+          <span className="relative inline-block whitespace-nowrap">
             a mandate
             <span className="text-blue-500">.</span>
             <svg
@@ -224,27 +229,23 @@ function Hero() {
           <span className="text-white/90">MandateZ prevents this at the source.</span>
         </p>
 
-        {/* CTAs */}
         <div className="mz-reveal mz-reveal-4 mt-12 flex flex-wrap items-center gap-4">
-          <Link
-            href="/login"
-            className={`${inter.className} group relative inline-flex items-center gap-2 bg-[#2563EB] px-7 py-4 text-[13px] font-medium tracking-wide text-white transition-all hover:bg-[#1d4ed8] hover:shadow-[0_0_40px_rgba(37,99,235,0.45)]`}
-          >
-            Get Started Free
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-0.5">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </Link>
-          <a
-            href="#breach-feed"
-            className="group inline-flex items-center gap-2 border border-white/15 bg-white/[0.02] px-7 py-4 text-[13px] font-medium tracking-wide text-white/80 transition-all hover:border-white/40 hover:bg-white/[0.05] hover:text-white"
-          >
-            See the breach feed
-            <span className="text-white/40 transition-transform group-hover:translate-y-0.5">↓</span>
-          </a>
+          <Button asChild variant="primary" size="lg">
+            <Link href="/login">
+              Get a free shadow scan in 60 seconds
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M5 12h14M13 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </Button>
+          <Button asChild variant="secondary" size="lg">
+            <a href="#breach-feed">
+              See the breach feed
+              <span className="text-white/40" aria-hidden>↓</span>
+            </a>
+          </Button>
         </div>
 
-        {/* Trust signals */}
         <div className="mz-reveal mz-reveal-5 mt-16 flex flex-wrap items-center gap-x-8 gap-y-4">
           <TrustSignal>OWASP Agentic Top 10 Compliant</TrustSignal>
           <span className="h-4 w-px bg-white/10" />
@@ -272,17 +273,47 @@ function TrustSignal({ children }: { children: React.ReactNode }) {
 }
 
 /* =======================================================================
+   SECTION 1.5 — SOCIAL PROOF
+   ======================================================================= */
+
+function SocialProof() {
+  return (
+    <Section tight className="relative border-t border-white/[0.05]">
+      <div className="mx-auto max-w-6xl px-6 md:px-10 lg:px-16">
+        <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between md:gap-8">
+          <span
+            className={`${mono.className} text-[10px] uppercase tracking-[0.32em] text-white/35`}
+          >
+            / Production
+          </span>
+          <p
+            className={`${syne.className} max-w-3xl text-[17px] font-semibold leading-snug tracking-tight text-white/85 md:text-[20px]`}
+          >
+            Trusted by teams shipping AI agents to production.
+          </p>
+          <span
+            className={`${mono.className} text-[10px] uppercase tracking-[0.32em] text-white/35`}
+          >
+            Cross-vendor · Neutral
+          </span>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* =======================================================================
    SECTION 2 — LIVE BREACH FEED
    ======================================================================= */
 
 function BreachSection() {
   return (
-    <section
+    <Section
       id="breach-feed"
-      className="relative border-t border-white/[0.05] py-28 md:py-36"
+      className="relative border-t border-white/[0.05]"
     >
       <div className="mx-auto max-w-6xl px-6 md:px-10 lg:px-16">
-        <SectionLabel index="02" label="Threat Intelligence" accent="red" />
+        <SectionMarker number="02" label="THREAT INTELLIGENCE" />
 
         <h2
           className={`${syne.className} mt-6 max-w-4xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[64px]`}
@@ -307,19 +338,19 @@ function BreachSection() {
           </p>
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
 /* =======================================================================
-   SECTION 3 — VERCEL SIMULATION
+   SECTION 3 — THE DIFFERENCE (Vercel simulation, code comparison)
    ======================================================================= */
 
-function VercelSimulation() {
+function DifferenceSection() {
   return (
-    <section className="relative border-t border-white/[0.05] py-28 md:py-36">
+    <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionLabel index="03" label="Threat Simulation" accent="blue" />
+        <SectionMarker number="03" label="THE DIFFERENCE" />
 
         <h2 className={`${syne.className} mt-6 max-w-4xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[60px]`}>
           How MandateZ blocks
@@ -333,7 +364,7 @@ function VercelSimulation() {
           permissions. Here&rsquo;s what happens with MandateZ.
         </p>
 
-        <div className="mt-16 grid gap-6 lg:grid-cols-2">
+        <div className="mt-20 grid gap-6 lg:grid-cols-2">
           <CodePanel
             tone="red"
             label="Without MandateZ"
@@ -390,21 +421,20 @@ function VercelSimulation() {
           />
         </div>
 
-        <div className="mt-14 flex flex-col items-start justify-between gap-6 border-t border-white/[0.05] pt-8 md:flex-row md:items-center">
+        <div className="mt-16 flex flex-col items-start justify-between gap-6 border-t border-white/[0.05] pt-10 md:flex-row md:items-center">
           <p className="max-w-2xl text-[15px] leading-relaxed text-white/55 md:text-[16px]">
             The difference: <span className="text-white">4 lines of policy configuration</span> and
             a cryptographic identity that cannot be stolen.
           </p>
-          <a
-            href="#"
-            className="group inline-flex items-center gap-2 border-b border-white/20 pb-1 text-[13px] font-medium text-white/80 transition-colors hover:border-blue-400 hover:text-blue-300"
-          >
-            See the full technical breakdown
-            <span className="transition-transform group-hover:translate-x-0.5">→</span>
-          </a>
+          <Button asChild variant="ghost" size="md">
+            <a href="#how-it-works">
+              See the full technical breakdown
+              <span aria-hidden>→</span>
+            </a>
+          </Button>
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -490,9 +520,9 @@ function HowItWorks() {
   ];
 
   return (
-    <section className="relative border-t border-white/[0.05] py-28 md:py-36">
+    <Section id="how-it-works" className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionLabel index="04" label="Architecture" accent="blue" />
+        <SectionMarker number="04" label="ARCHITECTURE" />
 
         <h2 className={`${syne.className} mt-6 max-w-4xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[64px]`}>
           Trust infrastructure
@@ -521,7 +551,7 @@ function HowItWorks() {
           ))}
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -561,11 +591,11 @@ function IconAudit() {
 
 function TrustScoreSection() {
   return (
-    <section className="relative border-t border-white/[0.05] py-28 md:py-36">
+    <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
         <div className="grid gap-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
-            <SectionLabel index="05" label="Verification" accent="emerald" />
+            <SectionMarker number="05" label="VERIFICATION" />
             <h2 className={`${syne.className} mt-6 max-w-2xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[60px]`}>
               Agent Trust Scores
               <br />
@@ -581,7 +611,7 @@ function TrustScoreSection() {
           <TrustCard />
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -595,7 +625,6 @@ function TrustCard() {
       />
 
       <div className="relative border border-white/[0.08] bg-[#0c0c0c] p-8 md:p-10">
-        {/* corner accents */}
         <span aria-hidden className="absolute left-0 top-0 h-3 w-3 border-l border-t border-emerald-400/70" />
         <span aria-hidden className="absolute right-0 top-0 h-3 w-3 border-r border-t border-emerald-400/70" />
         <span aria-hidden className="absolute left-0 bottom-0 h-3 w-3 border-l border-b border-emerald-400/70" />
@@ -605,25 +634,16 @@ function TrustCard() {
           <span className={`${mono.className} text-[10px] uppercase tracking-[0.3em] text-white/40`}>
             Mandate · ag_ctx_ai_prod
           </span>
-          <span className={`${mono.className} inline-flex items-center gap-1.5 border border-emerald-400/60 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.25em] text-emerald-300`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <Tag variant="success">
+            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
             Verified
-          </span>
+          </Tag>
         </div>
 
-        <div className="mt-8 flex items-end gap-4">
-          <span
-            className={`${syne.className} leading-none font-extrabold tracking-[-0.04em]`}
-            style={{ fontSize: 'clamp(5rem, 12vw, 8.5rem)' }}
-          >
-            94
-          </span>
-          <span className={`${mono.className} pb-3 text-[11px] uppercase tracking-[0.3em] text-white/40`}>
-            / 100
-          </span>
+        <div className="mt-8">
+          <NumberDisplay value="94" suffix="/ 100" size="lg" />
         </div>
 
-        {/* bar */}
         <div className="mt-6 h-1 w-full overflow-hidden bg-white/[0.06]">
           <div
             className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-emerald-400"
@@ -684,9 +704,9 @@ function ComplianceSection() {
   ];
 
   return (
-    <section className="relative border-t border-white/[0.05] py-28 md:py-36">
+    <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionLabel index="06" label="Compliance" accent="blue" />
+        <SectionMarker number="06" label="COMPLIANCE" />
 
         <h2 className={`${syne.className} mt-6 max-w-4xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[64px]`}>
           One click.
@@ -725,15 +745,14 @@ function ComplianceSection() {
           <p className={`${inter.className} text-[15px] text-white/60 md:text-[16px]`}>
             <span className="text-white">$500 per report.</span> Generated in seconds. No consultants. No waiting.
           </p>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center gap-2 border border-white/15 bg-white/[0.02] px-6 py-3 text-[13px] font-medium text-white/80 transition-all hover:border-white/40 hover:text-white"
-          >
-            See pricing <span>→</span>
-          </Link>
+          <Button asChild variant="secondary" size="md">
+            <Link href="/pricing">
+              See pricing <span aria-hidden>→</span>
+            </Link>
+          </Button>
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -755,9 +774,9 @@ function WorksWithSection() {
   ];
 
   return (
-    <section className="relative border-t border-white/[0.05] py-28 md:py-36">
+    <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionLabel index="07" label="Ecosystem" accent="blue" />
+        <SectionMarker number="07" label="ECOSYSTEM" />
 
         <h2 className={`${syne.className} mt-6 max-w-4xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[64px]`}>
           Works with
@@ -767,12 +786,13 @@ function WorksWithSection() {
 
         <div className="mt-14 flex flex-wrap items-center gap-3">
           {frameworks.map((f) => (
-            <span
+            <Tag
               key={f}
-              className={`${mono.className} cursor-default border border-white/10 bg-white/[0.02] px-4 py-2.5 text-[12px] uppercase tracking-[0.18em] text-white/70 transition-all hover:border-blue-400/60 hover:bg-blue-500/5 hover:text-blue-200`}
+              variant="default"
+              className="px-4 py-2 text-[12px] tracking-[0.18em]"
             >
               {f}
-            </span>
+            </Tag>
           ))}
         </div>
 
@@ -781,7 +801,7 @@ function WorksWithSection() {
           No framework can be the audit layer for its own agents.
         </p>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -836,9 +856,9 @@ function PricingSection() {
   ];
 
   return (
-    <section className="relative border-t border-white/[0.05] py-28 md:py-36">
+    <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionLabel index="08" label="Pricing" accent="blue" />
+        <SectionMarker number="08" label="PRICING" />
 
         <h2 className={`${syne.className} mt-6 max-w-4xl text-4xl font-extrabold leading-[0.98] tracking-[-0.02em] md:text-[64px]`}>
           Built for the scale
@@ -857,24 +877,22 @@ function PricingSection() {
               }`}
             >
               {t.highlight && (
-                <span className={`${mono.className} absolute -top-3 left-6 bg-[#080808] px-2 text-[9px] uppercase tracking-[0.3em] text-blue-300`}>
+                <Tag
+                  variant="info"
+                  className="absolute -top-3 left-6 bg-[#080808]"
+                >
                   Most Popular
-                </span>
+                </Tag>
               )}
-              <div className={`${mono.className} text-[10px] uppercase tracking-[0.25em] text-white/40`}>
+              <Tag variant="default" className="self-start">
                 {t.blurb}
-              </div>
+              </Tag>
               <h3 className={`${syne.className} mt-3 text-[24px] font-bold tracking-tight`}>
                 {t.name}
               </h3>
 
-              <div className="mt-6 flex items-baseline gap-1">
-                <span className={`${syne.className} text-[48px] font-extrabold leading-none tracking-[-0.03em]`}>
-                  {t.price}
-                </span>
-                <span className={`${mono.className} text-[12px] text-white/50`}>
-                  {t.cadence}
-                </span>
+              <div className="mt-6">
+                <NumberDisplay value={t.price} suffix={t.cadence} size="sm" />
               </div>
 
               <ul className="mt-8 space-y-3">
@@ -888,42 +906,38 @@ function PricingSection() {
                 ))}
               </ul>
 
-              <Link
-                href={t.ctaHref}
-                className={`mt-10 inline-flex items-center justify-center px-6 py-3.5 text-[13px] font-medium tracking-wide transition-all ${
-                  t.highlight
-                    ? 'bg-[#2563EB] text-white hover:bg-[#1d4ed8] hover:shadow-[0_0_30px_rgba(37,99,235,0.45)]'
-                    : 'border border-white/15 bg-white/[0.02] text-white/85 hover:border-white/40 hover:text-white'
-                }`}
-              >
-                {t.cta}
-              </Link>
+              <div className="mt-10">
+                <Button
+                  asChild
+                  variant={t.highlight ? 'primary' : 'secondary'}
+                  size="md"
+                  className="w-full"
+                >
+                  <Link href={t.ctaHref}>{t.cta}</Link>
+                </Button>
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Compliance report callout */}
-        <div className="mt-6 flex flex-col items-start justify-between gap-5 border border-emerald-500/30 bg-[radial-gradient(ellipse_at_left,rgba(16,185,129,0.10),transparent_70%)] p-8 md:flex-row md:items-center">
+        <Card variant="success-tinted" className="mt-6 flex flex-col items-start justify-between gap-5 p-8 md:flex-row md:items-center">
           <div>
-            <div className={`${mono.className} text-[10px] uppercase tracking-[0.25em] text-emerald-300`}>
-              One-time
-            </div>
-            <h4 className={`${syne.className} mt-2 text-[24px] font-bold tracking-tight md:text-[28px]`}>
+            <Tag variant="success">One-time</Tag>
+            <h4 className={`${syne.className} mt-3 text-[24px] font-bold tracking-tight md:text-[28px]`}>
               Compliance Report <span className="text-white/50">·</span> $500
             </h4>
             <p className="mt-2 max-w-xl text-[14.5px] text-white/60">
               OWASP, EU AI Act, or HIPAA pack generated from your signed event stream. Auditor-ready PDF in seconds.
             </p>
           </div>
-          <Link
-            href="/pricing"
-            className="inline-flex shrink-0 items-center gap-2 border border-emerald-400/40 bg-emerald-500/10 px-6 py-3 text-[13px] font-medium text-emerald-200 transition-all hover:border-emerald-300 hover:bg-emerald-500/15"
-          >
-            Generate a report <span>→</span>
-          </Link>
-        </div>
+          <Button asChild variant="success" size="md" className="shrink-0">
+            <Link href="/pricing">
+              Generate a report <span aria-hidden>→</span>
+            </Link>
+          </Button>
+        </Card>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -939,7 +953,7 @@ function ReportTeaserSection() {
   ];
 
   return (
-    <section className="relative overflow-hidden border-t border-white/[0.05] py-28 md:py-36">
+    <Section className="relative overflow-hidden border-t border-white/[0.05]">
       <div
         aria-hidden
         className="absolute -top-24 left-1/2 -z-10 h-[40vh] w-[80vw] -translate-x-1/2 rounded-full opacity-40 blur-[140px]"
@@ -950,7 +964,7 @@ function ReportTeaserSection() {
       />
 
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionLabel index="8.5" label="Original Research" accent="blue" />
+        <SectionMarker number="8.5" label="ORIGINAL RESEARCH" />
 
         <div className="mt-6 grid gap-10 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
@@ -995,14 +1009,8 @@ function ReportTeaserSection() {
               >
                 {String(i + 1).padStart(2, '0')}
               </div>
-              <div
-                className={`${syne.className} mt-6 font-extrabold tracking-[-0.03em] text-white`}
-                style={{
-                  fontSize: 'clamp(2.75rem, 6vw, 4rem)',
-                  lineHeight: '1',
-                }}
-              >
-                {s.stat}
+              <div className="mt-6">
+                <NumberDisplay value={s.stat} size="sm" />
               </div>
               <p className="mt-5 text-[14.5px] leading-[1.55] text-white/65">
                 {s.label}
@@ -1017,34 +1025,30 @@ function ReportTeaserSection() {
         </div>
 
         <div className="mt-12 flex flex-wrap items-center gap-4 border-t border-white/[0.05] pt-8">
-          <Link
-            href="/report"
-            className={`${inter.className} group inline-flex items-center gap-2 bg-[#2563EB] px-7 py-3.5 text-[13px] font-medium tracking-wide text-white transition-all hover:bg-[#1d4ed8] hover:shadow-[0_0_40px_rgba(37,99,235,0.45)]`}
-          >
-            Read the full report
-            <span className="transition-transform group-hover:translate-x-0.5">
-              →
-            </span>
-          </Link>
-          <Link
-            href="/report?print=true"
-            className="inline-flex items-center gap-2 border border-white/15 bg-white/[0.02] px-7 py-3.5 text-[13px] font-medium tracking-wide text-white/80 transition-all hover:border-white/40 hover:text-white"
-          >
-            Download PDF
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-            </svg>
-          </Link>
+          <Button asChild variant="primary" size="lg">
+            <Link href="/report">
+              Read the full report
+              <span aria-hidden>→</span>
+            </Link>
+          </Button>
+          <Button asChild variant="secondary" size="lg">
+            <Link href="/report?print=true">
+              Download PDF
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
+              </svg>
+            </Link>
+          </Button>
           <span
             className={`${mono.className} ml-auto text-[10px] uppercase tracking-[0.25em] text-white/35`}
           >
@@ -1052,7 +1056,7 @@ function ReportTeaserSection() {
           </span>
         </div>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -1129,38 +1133,5 @@ function FooterLink({
         {external && <span className="text-white/30">↗</span>}
       </a>
     </li>
-  );
-}
-
-/* =======================================================================
-   Shared primitives
-   ======================================================================= */
-
-function SectionLabel({
-  index,
-  label,
-  accent,
-}: {
-  index: string;
-  label: string;
-  accent: 'blue' | 'emerald' | 'red';
-}) {
-  const color =
-    accent === 'red'
-      ? 'text-red-400'
-      : accent === 'emerald'
-        ? 'text-emerald-300'
-        : 'text-blue-400';
-
-  return (
-    <div className="flex items-center gap-3">
-      <span className={`${mono.className} ${color} text-[11px] uppercase tracking-[0.32em]`}>
-        / {index}
-      </span>
-      <span className="mz-hairline h-px w-10" />
-      <span className={`${mono.className} text-[11px] uppercase tracking-[0.32em] text-white/50`}>
-        {label}
-      </span>
-    </div>
   );
 }

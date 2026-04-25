@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Card, Tag } from '@/components/ui';
 
 type Severity = 'critical' | 'high' | 'medium' | 'low';
 
@@ -68,11 +69,11 @@ const SEV_DOT: Record<Severity, string> = {
   low: 'bg-yellow-400',
 };
 
-const SEV_GLOW: Record<Severity, string> = {
-  critical: 'shadow-[0_0_14px_rgba(239,68,68,0.85)]',
-  high: 'shadow-[0_0_12px_rgba(249,115,22,0.7)]',
-  medium: 'shadow-[0_0_10px_rgba(251,191,36,0.6)]',
-  low: 'shadow-[0_0_8px_rgba(250,204,21,0.5)]',
+const SEV_TAG: Record<Severity, 'danger' | 'warning' | 'info'> = {
+  critical: 'danger',
+  high: 'danger',
+  medium: 'warning',
+  low: 'info',
 };
 
 export default function BreachFeed() {
@@ -132,20 +133,22 @@ export default function BreachFeed() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] font-mono text-white/40">
+      <div className="mb-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted">
         <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-danger opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-danger" />
         </span>
         <span>
           {loading && !liveIncidents.length
             ? 'Scanning the wire'
-            : `${ordered.length} incidents · ${lastUpdated
-                ? `updated ${lastUpdated.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}`
-                : 'static feed'}`}
+            : `${ordered.length} incidents · ${
+                lastUpdated
+                  ? `updated ${lastUpdated.toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}`
+                  : 'static feed'
+              }`}
         </span>
       </div>
 
@@ -159,81 +162,85 @@ export default function BreachFeed() {
 }
 
 function IncidentCard({ incident }: { incident: Incident }) {
-  return (
-    <a
-      href={incident.url}
-      target={incident.url === '#' ? undefined : '_blank'}
-      rel="noopener noreferrer"
-      className="group relative block border border-white/[0.08] bg-white/[0.015] p-6 transition-all duration-300 hover:border-white/25 hover:bg-white/[0.035] md:p-7"
-    >
-      <div className="flex items-start gap-5">
-        <div className="relative mt-2 shrink-0">
-          <span
-            className={`block h-2.5 w-2.5 rounded-full ${SEV_DOT[incident.severity]} ${SEV_GLOW[incident.severity]}`}
-          />
-          <span
-            className={`absolute inset-0 h-2.5 w-2.5 animate-ping rounded-full opacity-60 ${SEV_DOT[incident.severity]}`}
-          />
-        </div>
+  const isCritical =
+    incident.severity === 'critical' || incident.severity === 'high';
+  const variant = isCritical ? 'danger-tinted' : 'default';
 
-        <div className="min-w-0 flex-1">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            {incident.pinned && (
-              <span className="border border-blue-500/50 bg-blue-500/5 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-blue-300">
-                Pinned
-              </span>
-            )}
-            {incident.live && (
-              <span className="flex items-center gap-1.5 border border-blue-400/60 bg-blue-500/10 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-blue-200">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-300" />
-                Live
-              </span>
-            )}
-            <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/40">
-              {incident.severity}
-            </span>
-            {incident.owasp && (
-              <span className="border border-white/10 bg-white/[0.02] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.22em] text-white/55">
-                {incident.owasp}
-              </span>
+  return (
+    <Card
+      variant={variant}
+      className="group relative block p-0 transition-colors hover:border-border-strong"
+    >
+      <a
+        href={incident.url}
+        target={incident.url === '#' ? undefined : '_blank'}
+        rel="noopener noreferrer"
+        className="block p-6 md:p-7"
+      >
+        <div className="flex items-start gap-5">
+          <div className="relative mt-2 shrink-0">
+            <span
+              className={`block h-2.5 w-2.5 rounded-full ${SEV_DOT[incident.severity]}`}
+            />
+            <span
+              className={`absolute inset-0 h-2.5 w-2.5 animate-ping rounded-full opacity-60 ${SEV_DOT[incident.severity]}`}
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {incident.pinned && <Tag variant="info">Pinned</Tag>}
+              {incident.live && (
+                <Tag variant="info" className="inline-flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent-primary" />
+                  Live
+                </Tag>
+              )}
+              <Tag variant={SEV_TAG[incident.severity]}>
+                {incident.severity}
+              </Tag>
+              {incident.owasp && (
+                <Tag variant="default">{incident.owasp}</Tag>
+              )}
+            </div>
+
+            <h3 className="text-[17px] leading-snug text-text-primary transition-colors group-hover:text-accent-primary-hover md:text-[19px]">
+              {incident.title}
+            </h3>
+
+            <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.15em] text-text-muted">
+              {incident.date} · {incident.source}
+            </p>
+
+            {incident.prevention && (
+              <Card variant="success-tinted" className="mt-5 px-4 py-3">
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-accent-success">
+                  Prevented by MandateZ
+                </p>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-text-primary">
+                  {incident.prevention}
+                </p>
+              </Card>
             )}
           </div>
 
-          <h3 className="text-[17px] leading-snug text-white transition-colors group-hover:text-blue-200 md:text-[19px]">
-            {incident.title}
-          </h3>
-
-          <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.15em] text-white/35">
-            {incident.date} · {incident.source}
-          </p>
-
-          {incident.prevention && (
-            <div className="mt-5 border-l-2 border-emerald-500/70 bg-emerald-500/[0.04] px-4 py-3">
-              <p className="mb-1 font-mono text-[9px] uppercase tracking-[0.25em] text-emerald-300">
-                Prevented by MandateZ
-              </p>
-              <p className="text-[13.5px] leading-relaxed text-white/75">
-                {incident.prevention}
-              </p>
-            </div>
-          )}
+          <div className="hidden shrink-0 self-center text-text-muted transition-colors duration-200 group-hover:text-accent-primary md:block">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M7 17L17 7M17 7H9M17 7V15" />
+            </svg>
+          </div>
         </div>
-
-        <div className="hidden shrink-0 self-center text-white/20 transition-all duration-300 group-hover:translate-x-1 group-hover:text-blue-300 md:block">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M7 17L17 7M17 7H9M17 7V15" />
-          </svg>
-        </div>
-      </div>
-    </a>
+      </a>
+    </Card>
   );
 }
