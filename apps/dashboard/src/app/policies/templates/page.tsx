@@ -1,4 +1,5 @@
 import { POLICY_TEMPLATE_LIST } from '@mandatez/sdk';
+import { Button, SectionMarker } from '@/components/ui';
 import { TemplatesGallery, type TemplateView } from './templates-gallery';
 
 export const dynamic = 'force-dynamic';
@@ -22,15 +23,26 @@ export default function PolicyTemplatesPage() {
   }));
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold">Policy Templates</h2>
-        <p className="text-gray-400 mt-1 max-w-3xl">
-          Pre-built policy configurations for common agent use cases. Pick a template,
-          apply it to an agent, and ship. Every template is a starting point — clone it,
-          edit the rules, and push your tweaks back to source control.
-        </p>
-      </div>
+    <div className="space-y-10">
+      <header className="space-y-4">
+        <SectionMarker number="02" label="POLICY TEMPLATES" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-text-primary">
+              Policy templates
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
+              Pre-built policy configurations for common agent use cases. Pick
+              a template, apply it to an agent, and ship. Every template is a
+              starting point — clone it, edit the rules, push tweaks back to
+              source control.
+            </p>
+          </div>
+          <Button variant="secondary" asChild>
+            <a href="/policies">← Back to policies</a>
+          </Button>
+        </div>
+      </header>
 
       <TemplatesGallery templates={templates} />
     </div>

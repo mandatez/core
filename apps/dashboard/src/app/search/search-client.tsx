@@ -12,6 +12,14 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
+import {
+  Button,
+  Card,
+  CardContent,
+  EmptyState,
+  Tag,
+  cn,
+} from '@/components/ui';
 
 const ACTION_TYPES = ['read', 'write', 'export', 'delete', 'call', 'payment'] as const;
 const OUTCOMES = ['allowed', 'blocked', 'flagged'] as const;
@@ -19,11 +27,12 @@ const OUTCOMES = ['allowed', 'blocked', 'flagged'] as const;
 type ActionType = (typeof ACTION_TYPES)[number];
 type Outcome = (typeof OUTCOMES)[number];
 
-const OUTCOME_STYLES: Record<string, string> = {
-  allowed: 'bg-green-900/50 text-green-300 border-green-700',
-  blocked: 'bg-red-900/50 text-red-300 border-red-700',
-  flagged: 'bg-yellow-900/50 text-yellow-300 border-yellow-700',
-  pending_approval: 'bg-blue-900/50 text-blue-300 border-blue-700',
+type OutcomeVariant = 'success' | 'danger' | 'warning' | 'info' | 'neutral';
+const OUTCOME_VARIANT: Record<string, OutcomeVariant> = {
+  allowed: 'success',
+  blocked: 'danger',
+  flagged: 'warning',
+  pending_approval: 'info',
 };
 
 interface EventRow {
@@ -81,6 +90,21 @@ interface SearchState {
 
 const PAGE_SIZE = 50;
 
+const EXAMPLE_QUERIES = [
+  'export customer_data',
+  'pol_finops blocked',
+  'agent ag_acme_billing',
+  'payment flagged',
+];
+
+const inputClass =
+  'w-full rounded-md border border-border-default bg-bg-base px-3 py-2 ' +
+  'text-sm text-text-primary placeholder:text-text-muted ' +
+  'focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 ' +
+  'transition-colors';
+
+const monoInputClass = cn(inputClass, 'font-mono');
+
 function csvToSet<T extends string>(csv: string, valid: readonly T[]): Set<T> {
   if (!csv) return new Set();
   return new Set(
@@ -115,8 +139,6 @@ function buildExportUrl(state: SearchState): string {
   const p = new URLSearchParams();
   p.set('owner_id', state.ownerId);
   if (state.agentId) p.set('agent_id', state.agentId);
-  // The export endpoint takes a single outcome, not a list — preserve the
-  // first selected outcome and note this in the UI when more are chosen.
   const firstOutcome = [...state.outcomes][0];
   if (firstOutcome) p.set('outcome', firstOutcome);
   if (state.from) p.set('from', state.from);
@@ -160,7 +182,6 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
   const [policies, setPolicies] = useState<PolicyOpt[]>(initialPolicies);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Persist owner_id to localStorage so repeat visits prefill correctly.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!state.ownerId) {
@@ -171,9 +192,6 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
     }
   }, [state.ownerId]);
 
-  // Refresh agent + policy dropdowns when owner changes. Supabase RLS
-  // already owner-scopes these queries via the browser client, so we hit
-  // the DB directly instead of round-tripping through a bespoke API route.
   useEffect(() => {
     if (!state.ownerId) {
       setAgents([]);
@@ -202,7 +220,7 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
         if (agentsRes.data) setAgents(agentsRes.data as AgentOpt[]);
         if (policiesRes.data) setPolicies(policiesRes.data as PolicyOpt[]);
       } catch {
-        // Non-fatal — dropdowns fall back to the prefetched lists.
+        // Non-fatal — fall back to prefetched lists.
       }
     })();
     return () => {
@@ -210,7 +228,6 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
     };
   }, [state.ownerId]);
 
-  // Keep the URL in sync with the current state + offset.
   const syncUrl = useCallback(
     (nextState: SearchState, nextOffset: number) => {
       const qs = buildQueryString(nextState, nextOffset);
@@ -219,11 +236,13 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
     [router],
   );
 
-  // Primary search — debounced so typing in the free-text box doesn't
-  // hammer the API. Filter-toggle changes apply immediately.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const runSearch = useCallback(
-    async (nextState: SearchState, nextOffset: number, { debounce }: { debounce: boolean }) => {
+    async (
+      nextState: SearchState,
+      nextOffset: number,
+      { debounce }: { debounce: boolean },
+    ) => {
       if (!nextState.ownerId) {
         setEvents([]);
         setTotal(0);
@@ -264,14 +283,11 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
     [],
   );
 
-  // Initial load — only if we already have an owner_id in URL or storage.
   useEffect(() => {
     if (state.ownerId) {
       runSearch(state, offset, { debounce: false });
       syncUrl(state, offset);
     }
-    // Intentionally run once on mount — subsequent calls flow through
-    // updateFilter / onSubmit / pagination handlers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -362,48 +378,40 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
     (state.to ? 1 : 0) +
     (state.policyId ? 1 : 0);
 
+  const activeChips = buildActiveChips(state, agents, policies);
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
       {/* Filters sidebar */}
       <aside className="space-y-5 lg:sticky lg:top-6 lg:self-start">
         <form onSubmit={onManualSubmit} className="space-y-5">
-          {/* Owner ID */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Owner ID
-            </label>
+          <FilterField label="Owner ID">
             <input
               type="text"
               placeholder="owner_your_org"
               value={state.ownerId}
               onChange={onOwnerIdChange}
-              className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500"
+              className={monoInputClass}
             />
-          </div>
+          </FilterField>
 
-          {/* Free text */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Search
-            </label>
+          <FilterField
+            label="Search"
+            hint="Matches resource, agent ID, policy ID, action type, outcome, metadata."
+          >
             <input
               type="search"
               placeholder="resource, policy, agent…"
               value={state.q}
               onChange={onQChange}
               autoFocus
-              className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className={inputClass}
             />
-            <p className="text-[11px] text-gray-500">
-              Matches resource, agent ID, policy ID, action type, outcome, and metadata.
-            </p>
-          </div>
+          </FilterField>
 
-          {/* Date range */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Date range
-            </label>
+          <FilterField label="Date range">
             <div className="grid grid-cols-2 gap-2">
               <input
                 type="datetime-local"
@@ -411,7 +419,7 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
                 onChange={(e) =>
                   updateAndSearch((s) => ({ ...s, from: e.target.value }))
                 }
-                className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500"
+                className={cn(inputClass, 'px-2 py-1.5 text-xs')}
               />
               <input
                 type="datetime-local"
@@ -419,22 +427,18 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
                 onChange={(e) =>
                   updateAndSearch((s) => ({ ...s, to: e.target.value }))
                 }
-                className="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500"
+                className={cn(inputClass, 'px-2 py-1.5 text-xs')}
               />
             </div>
-          </div>
+          </FilterField>
 
-          {/* Agent */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Agent
-            </label>
+          <FilterField label="Agent">
             <select
               value={state.agentId}
               onChange={(e) =>
                 updateAndSearch((s) => ({ ...s, agentId: e.target.value }))
               }
-              className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className={inputClass}
             >
               <option value="">All agents</option>
               {agents.map((a) => (
@@ -443,24 +447,23 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
                 </option>
               ))}
             </select>
-          </div>
+          </FilterField>
 
-          {/* Action type */}
           <fieldset className="space-y-1.5">
-            <legend className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <legend className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
               Action type
             </legend>
             <div className="grid grid-cols-2 gap-1.5">
               {ACTION_TYPES.map((type) => (
                 <label
                   key={type}
-                  className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"
+                  className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
                 >
                   <input
                     type="checkbox"
                     checked={state.actionTypes.has(type)}
                     onChange={() => toggleActionType(type)}
-                    className="accent-blue-500"
+                    className="accent-accent-primary"
                   />
                   {type}
                 </label>
@@ -468,22 +471,21 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
             </div>
           </fieldset>
 
-          {/* Outcome */}
           <fieldset className="space-y-1.5">
-            <legend className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <legend className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
               Outcome
             </legend>
             <div className="space-y-1.5">
               {OUTCOMES.map((outcome) => (
                 <label
                   key={outcome}
-                  className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"
+                  className="flex cursor-pointer items-center gap-2 text-sm text-text-primary"
                 >
                   <input
                     type="checkbox"
                     checked={state.outcomes.has(outcome)}
                     onChange={() => toggleOutcome(outcome)}
-                    className="accent-blue-500"
+                    className="accent-accent-primary"
                   />
                   {outcome}
                 </label>
@@ -491,17 +493,13 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
             </div>
           </fieldset>
 
-          {/* Policy */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Policy
-            </label>
+          <FilterField label="Policy">
             <select
               value={state.policyId}
               onChange={(e) =>
                 updateAndSearch((s) => ({ ...s, policyId: e.target.value }))
               }
-              className="w-full bg-gray-950 border border-gray-800 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className={inputClass}
             >
               <option value="">All policies</option>
               {policies.map((p) => (
@@ -510,185 +508,355 @@ export function SearchClient({ initialFilters, initialAgents, initialPolicies }:
                 </option>
               ))}
             </select>
-          </div>
+          </FilterField>
 
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={onClearFilters}
             disabled={filterCount === 0}
-            className="w-full text-xs px-3 py-2 rounded border border-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="w-full"
           >
             Clear filters {filterCount > 0 ? `(${filterCount})` : ''}
-          </button>
+          </Button>
         </form>
       </aside>
 
-      {/* Results main */}
-      <section className="space-y-4 min-w-0">
+      {/* Results */}
+      <section className="min-w-0 space-y-4">
         {/* Results header */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="text-sm text-gray-300">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-text-primary">
             {loading ? (
-              <span className="text-gray-500">Searching…</span>
+              <span className="text-text-muted">Searching…</span>
             ) : state.ownerId ? (
               <>
-                <span className="font-semibold text-gray-100">
-                  {total.toLocaleString()}
-                </span>{' '}
+                <span className="font-semibold">{total.toLocaleString()}</span>{' '}
                 event{total === 1 ? '' : 's'} match
               </>
             ) : (
-              <span className="text-gray-500">Enter an owner ID to search.</span>
+              <span className="text-text-muted">Enter an owner ID to search.</span>
             )}
           </div>
 
           <div className="flex items-center gap-2">
             {state.outcomes.size > 1 && (
-              <span
-                className="text-[11px] text-yellow-300/80"
+              <Tag
+                variant="warning"
                 title="The CSV exporter accepts one outcome at a time — it will export using the first selected outcome."
               >
-                CSV: first outcome only
-              </span>
+                CSV: FIRST OUTCOME ONLY
+              </Tag>
             )}
-            <a
-              href={exportUrl}
-              className="text-xs px-3 py-1.5 rounded border border-gray-700 hover:border-gray-500 text-gray-200 hover:text-white transition-colors"
-            >
-              Export results as CSV
-            </a>
+            <Button variant="secondary" size="sm" asChild>
+              <a href={exportUrl}>Export results as CSV</a>
+            </Button>
           </div>
         </div>
 
-        {error && (
-          <div className="border border-red-900/60 bg-red-950/30 text-red-300 rounded-lg px-4 py-3 text-sm">
-            {error}
+        {/* Active filter chips */}
+        {activeChips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {activeChips.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => updateAndSearch((s) => chip.clear(s))}
+                className="group inline-flex items-center gap-1.5 rounded border border-accent-primary/30 bg-accent-primary/10 px-2 py-0.5 font-mono text-[11px] uppercase tracking-wider text-accent-primary transition-colors hover:border-accent-primary"
+              >
+                <span className="truncate max-w-[200px]">{chip.label}</span>
+                <span className="text-accent-primary/70 group-hover:text-accent-primary">
+                  ✕
+                </span>
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Results table */}
-        <div className="border border-gray-800 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium whitespace-nowrap">Timestamp</th>
-                <th className="text-left px-4 py-3 font-medium">Agent</th>
-                <th className="text-left px-4 py-3 font-medium">Action</th>
-                <th className="text-left px-4 py-3 font-medium">Resource</th>
-                <th className="text-left px-4 py-3 font-medium">Outcome</th>
-                <th className="text-left px-4 py-3 font-medium">Policy</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {events.length === 0 && !loading && state.ownerId && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-gray-500 text-sm">
-                    No events match these filters.
-                  </td>
-                </tr>
-              )}
-              {events.map((event) => {
-                const expanded = expandedId === event.id;
-                const outcomeStyle =
-                  OUTCOME_STYLES[event.outcome] ?? 'bg-gray-800 text-gray-300 border-gray-700';
-                return (
-                  <Fragment key={event.id}>
-                    <tr
-                      onClick={() => setExpandedId(expanded ? null : event.id)}
-                      className="cursor-pointer hover:bg-gray-900/40 transition-colors"
-                    >
-                      <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap font-mono">
-                        {formatTimestamp(event.timestamp)}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        <div className="font-mono text-gray-200">{event.agent_id}</div>
-                        {event.agent_name && event.agent_name !== event.agent_id && (
-                          <div className="text-gray-500 text-[11px]">{event.agent_name}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-200">{event.action_type}</td>
-                      <td className="px-4 py-3 text-xs text-gray-200 font-mono break-all">
-                        {event.resource}
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded border font-medium ${outcomeStyle}`}
-                        >
-                          {event.outcome}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-400 font-mono">
-                        {event.policy_id ?? '—'}
-                      </td>
-                    </tr>
-                    {expanded && (
-                      <tr className="bg-gray-950/60">
-                        <td colSpan={6} className="px-4 py-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                            <div>
-                              <span className="text-gray-500">Event ID:</span>{' '}
-                              <span className="font-mono text-gray-300 break-all">{event.id}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Owner:</span>{' '}
-                              <span className="font-mono text-gray-300">{event.owner_id}</span>
-                            </div>
-                            <div className="md:col-span-2">
-                              <span className="text-gray-500">Public key:</span>{' '}
-                              <span className="font-mono text-gray-400 break-all">
-                                {event.public_key}
-                              </span>
-                            </div>
-                            <div className="md:col-span-2">
-                              <span className="text-gray-500">Signature:</span>{' '}
-                              <span className="font-mono text-gray-400 break-all">
-                                {event.signature}
-                              </span>
-                            </div>
-                            {Object.keys(event.metadata ?? {}).length > 0 && (
-                              <div className="md:col-span-2">
-                                <span className="text-gray-500">Metadata:</span>
-                                <pre className="mt-1 bg-gray-900 rounded p-3 text-gray-300 overflow-x-auto">
-                                  {JSON.stringify(event.metadata, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {error && (
+          <Card variant="danger-tinted">
+            <CardContent className="px-4 py-3">
+              <p className="text-sm text-accent-danger">{error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Results */}
+        {!state.ownerId ? (
+          <EmptyState
+            title="Enter an owner ID to search"
+            description="Search every signed AgentEvent across your stack. Try one of these to get a feel for the query language:"
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                {EXAMPLE_QUERIES.map((q) => (
+                  <Tag key={q} variant="neutral">
+                    {q.toUpperCase()}
+                  </Tag>
+                ))}
+              </div>
+            }
+          />
+        ) : events.length === 0 && !loading ? (
+          <EmptyState
+            title="No events match"
+            description="Try broadening your filters — clear an outcome, widen the date range, or remove the policy filter."
+            action={
+              filterCount > 0 ? (
+                <Button variant="secondary" size="sm" onClick={onClearFilters}>
+                  Clear all filters
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="space-y-2">
+            {events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                expanded={expandedId === event.id}
+                onToggle={() =>
+                  setExpandedId(expandedId === event.id ? null : event.id)
+                }
+              />
+            ))}
+          </div>
+        )}
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between text-sm text-gray-400">
-            <button
-              type="button"
+          <div className="flex items-center justify-between gap-3 border-t border-border-default pt-4">
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onPrev}
               disabled={offset <= 0 || loading}
-              className="px-3 py-1.5 rounded border border-gray-800 hover:border-gray-600 hover:text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               ← Previous
-            </button>
-            <span className="text-xs">
-              Showing {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total.toLocaleString()}
+            </Button>
+            <span className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+              PAGE {currentPage} / {totalPages} · {offset + 1}–
+              {Math.min(offset + PAGE_SIZE, total)} OF{' '}
+              {total.toLocaleString()}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onNext}
               disabled={offset + PAGE_SIZE >= total || loading}
-              className="px-3 py-1.5 rounded border border-gray-800 hover:border-gray-600 hover:text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Next →
-            </button>
+            </Button>
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+interface ChipDef {
+  id: string;
+  label: string;
+  clear: (s: SearchState) => SearchState;
+}
+
+function buildActiveChips(
+  state: SearchState,
+  agents: AgentOpt[],
+  policies: PolicyOpt[],
+): ChipDef[] {
+  const chips: ChipDef[] = [];
+
+  if (state.q) {
+    chips.push({
+      id: 'q',
+      label: `Q: ${state.q}`,
+      clear: (s) => ({ ...s, q: '' }),
+    });
+  }
+  if (state.agentId) {
+    const a = agents.find((x) => x.id === state.agentId);
+    chips.push({
+      id: 'agent',
+      label: `AGENT: ${a?.name ?? state.agentId}`,
+      clear: (s) => ({ ...s, agentId: '' }),
+    });
+  }
+  for (const t of state.actionTypes) {
+    chips.push({
+      id: `at-${t}`,
+      label: `ACTION: ${t}`,
+      clear: (s) => {
+        const next = new Set(s.actionTypes);
+        next.delete(t);
+        return { ...s, actionTypes: next };
+      },
+    });
+  }
+  for (const o of state.outcomes) {
+    chips.push({
+      id: `oc-${o}`,
+      label: `OUTCOME: ${o}`,
+      clear: (s) => {
+        const next = new Set(s.outcomes);
+        next.delete(o);
+        return { ...s, outcomes: next };
+      },
+    });
+  }
+  if (state.from) {
+    chips.push({
+      id: 'from',
+      label: `FROM ${state.from}`,
+      clear: (s) => ({ ...s, from: '' }),
+    });
+  }
+  if (state.to) {
+    chips.push({
+      id: 'to',
+      label: `TO ${state.to}`,
+      clear: (s) => ({ ...s, to: '' }),
+    });
+  }
+  if (state.policyId) {
+    const p = policies.find((x) => x.id === state.policyId);
+    chips.push({
+      id: 'pol',
+      label: `POLICY: ${p?.name ?? state.policyId}`,
+      clear: (s) => ({ ...s, policyId: '' }),
+    });
+  }
+
+  return chips;
+}
+
+function FilterField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block font-mono text-[10px] uppercase tracking-widest text-text-muted">
+        {label}
+      </label>
+      {children}
+      {hint && (
+        <p className="text-[11px] leading-relaxed text-text-muted">{hint}</p>
+      )}
+    </div>
+  );
+}
+
+function EventCard({
+  event,
+  expanded,
+  onToggle,
+}: {
+  event: EventRow;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const outcomeVariant = OUTCOME_VARIANT[event.outcome] ?? 'neutral';
+  return (
+    <Card variant="default">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full text-left"
+        aria-expanded={expanded}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+          <div className="min-w-0 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Tag variant="neutral">
+                {event.action_type.toUpperCase()}
+              </Tag>
+              <Tag variant={outcomeVariant}>
+                {event.outcome.toUpperCase()}
+              </Tag>
+              <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+                {formatTimestamp(event.timestamp)}
+              </span>
+            </div>
+            <div className="font-mono text-xs text-text-primary break-all">
+              {event.resource}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-text-muted">
+              <Tag>{event.agent_id}</Tag>
+              {event.agent_name && event.agent_name !== event.agent_id && (
+                <span>{event.agent_name}</span>
+              )}
+              {event.policy_id && (
+                <>
+                  <span>·</span>
+                  <span>{event.policy_id}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+            {expanded ? '▾' : '▸'}
+          </span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border-default px-5 py-4">
+          <dl className="grid gap-3 text-xs sm:grid-cols-2">
+            <Field label="EVENT ID" value={event.id} />
+            <Field label="OWNER" value={event.owner_id} />
+            <Field
+              className="sm:col-span-2"
+              label="PUBLIC KEY"
+              value={event.public_key}
+            />
+            <Field
+              className="sm:col-span-2"
+              label="SIGNATURE"
+              value={event.signature}
+            />
+            {Object.keys(event.metadata ?? {}).length > 0 && (
+              <div className="sm:col-span-2">
+                <dt className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  METADATA
+                </dt>
+                <dd>
+                  <pre className="mt-1 overflow-x-auto rounded-md border border-border-default bg-bg-base p-3 font-mono text-[11px] leading-relaxed text-text-secondary">
+                    {JSON.stringify(event.metadata, null, 2)}
+                  </pre>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function Field({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <dt className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+        {label}
+      </dt>
+      <dd className="mt-0.5 break-all font-mono text-[11px] text-text-secondary">
+        {value}
+      </dd>
     </div>
   );
 }

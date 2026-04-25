@@ -1,23 +1,37 @@
 import Link from 'next/link';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  SectionMarker,
+  Tag,
+} from '@/components/ui';
+import { CopyCodeBlock } from './copy-code-block';
 
 export const metadata = {
   title: 'MandateZ Proxy Mode — Zero-Code Governance',
   description:
-    'Route your agent\'s outbound API calls through MandateZ and enforce policy at the network layer. No SDK install required.',
+    "Route your agent's outbound API calls through MandateZ and enforce policy at the network layer. No SDK install required.",
 };
 
 const PROXY_BASE = 'https://core-dashboard-black.vercel.app/api/proxy';
 
 const SUPPORTED_TARGETS = [
-  { api: 'OpenAI', pattern: 'openai/v1/*', autoDetected: true },
-  { api: 'Anthropic', pattern: 'anthropic/v1/*', autoDetected: true },
-  { api: 'Stripe', pattern: 'stripe/*', autoDetected: true },
-  { api: 'Supabase', pattern: 'supabase/*', autoDetected: true },
-  { api: 'Slack', pattern: 'slack/*', autoDetected: true },
-  { api: 'GitHub', pattern: 'github/*', autoDetected: true },
-  { api: 'Twilio / SendGrid / Resend', pattern: 'twilio/* · sendgrid/* · resend/*', autoDetected: true },
-  { api: 'Vercel', pattern: 'vercel/*', autoDetected: true },
-  { api: 'Custom domain', pattern: 'your-domain.com/*', autoDetected: true },
+  { api: 'OpenAI', pattern: 'openai/v1/*' },
+  { api: 'Anthropic', pattern: 'anthropic/v1/*' },
+  { api: 'Stripe', pattern: 'stripe/*' },
+  { api: 'Supabase', pattern: 'supabase/*' },
+  { api: 'Slack', pattern: 'slack/*' },
+  { api: 'GitHub', pattern: 'github/*' },
+  {
+    api: 'Twilio / SendGrid / Resend',
+    pattern: 'twilio/* · sendgrid/* · resend/*',
+  },
+  { api: 'Vercel', pattern: 'vercel/*' },
+  { api: 'Custom domain', pattern: 'your-domain.com/*' },
 ];
 
 const PYTHON_EXAMPLE = `import httpx
@@ -71,164 +85,231 @@ if (response.status === 403) {
   throw new Error(\`Blocked by \${policy_id}: \${reason}\`);
 }`;
 
+const CURL_EXAMPLE = `curl -X POST '${PROXY_BASE}' \\
+  -H 'X-MandateZ-Agent-ID: ag_your_agent_id' \\
+  -H 'X-MandateZ-Owner-ID: your_owner_id' \\
+  -H 'X-MandateZ-Target-URL: https://api.openai.com/v1/chat/completions' \\
+  -H "Authorization: Bearer $OPENAI_API_KEY" \\
+  -H 'Content-Type: application/json' \\
+  --data '{"model":"gpt-4","messages":[{"role":"user","content":"hi"}]}'`;
+
 export default function ProxyPage() {
   return (
-    <div className="space-y-16">
-      {/* Hero */}
-      <header className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight">MandateZ Proxy Mode</h1>
-        <p className="text-lg text-gray-400 max-w-3xl leading-relaxed">
-          Zero code changes. Point your agent&apos;s HTTP client at the MandateZ proxy and
-          governance is automatic — policy enforcement, signed event logging, and trust scoring
-          for every outbound call.
-        </p>
+    <div className="space-y-12">
+      <header className="space-y-4">
+        <SectionMarker number="01" label="PROXY SETUP" />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-text-primary">
+              Proxy mode
+            </h1>
+            <p className="mt-2 max-w-3xl text-base leading-relaxed text-text-secondary">
+              Zero code changes. Point your agent&apos;s HTTP client at the
+              MandateZ proxy and governance is automatic — policy enforcement,
+              signed event logging, and trust scoring for every outbound call.
+            </p>
+          </div>
+          <Tag variant="success">REACHABLE</Tag>
+        </div>
       </header>
 
-      {/* Section A — How It Works */}
+      {/* How it works */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">How it works</h2>
-        <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-8 font-mono text-sm overflow-x-auto">
-          <div className="flex flex-wrap items-center gap-3 text-gray-300">
-            <span className="rounded-md border border-gray-700 bg-gray-900 px-3 py-2">Your Agent</span>
-            <span className="text-gray-500">→</span>
-            <span className="rounded-md border border-blue-800 bg-blue-950/40 px-3 py-2 text-blue-300">MandateZ Proxy</span>
-            <span className="text-gray-500">→</span>
-            <span className="rounded-md border border-gray-700 bg-gray-900 px-3 py-2">Target API</span>
-          </div>
-          <div className="ml-[7.5rem] mt-2 border-l border-dashed border-gray-700 pl-4 text-gray-400 space-y-1 text-xs leading-relaxed">
-            <div>↓ Policy check (allow / block / flag)</div>
-            <div>↓ Signed event log (Ed25519)</div>
-            <div>↓ Trust score update</div>
-            <div>↓ Oversight alert on flagged action</div>
-          </div>
-        </div>
-        <p className="text-sm text-gray-400 max-w-3xl">
-          Your agent makes its outbound call to MandateZ instead of directly to OpenAI, Anthropic,
-          Stripe, or any other API. MandateZ evaluates the call against your configured policies.
-          If allowed, the request is forwarded to the real target and the response is relayed back.
-          Every call produces a signed <code className="text-gray-300">AgentEvent</code> in your
-          dashboard.
-        </p>
+        <h2 className="text-xl font-semibold tracking-tight text-text-primary">
+          How it works
+        </h2>
+        <Card variant="default">
+          <CardContent className="px-6 py-6">
+            <div className="flex flex-wrap items-center gap-3 font-mono text-sm">
+              <Tag>YOUR AGENT</Tag>
+              <span className="text-text-muted">→</span>
+              <Tag variant="info">MANDATEZ PROXY</Tag>
+              <span className="text-text-muted">→</span>
+              <Tag>TARGET API</Tag>
+            </div>
+            <ul className="mt-4 ml-2 space-y-1 border-l border-dashed border-border-default pl-4 font-mono text-[11px] uppercase tracking-wider text-text-muted">
+              <li>↓ POLICY CHECK (ALLOW / BLOCK / FLAG)</li>
+              <li>↓ SIGNED EVENT LOG (ED25519)</li>
+              <li>↓ TRUST SCORE UPDATE</li>
+              <li>↓ OVERSIGHT ALERT ON FLAGGED ACTION</li>
+            </ul>
+            <p className="mt-5 max-w-3xl text-sm leading-relaxed text-text-secondary">
+              Your agent makes its outbound call to MandateZ instead of
+              directly to OpenAI, Anthropic, Stripe, or any other API.
+              MandateZ evaluates the call against your configured policies. If
+              allowed, the request is forwarded and the response is relayed
+              back. Every call produces a signed{' '}
+              <code className="font-mono text-text-primary">AgentEvent</code>{' '}
+              in your dashboard.
+            </p>
+          </CardContent>
+        </Card>
       </section>
 
-      {/* Section B — Setup */}
+      {/* Setup steps */}
       <section className="space-y-6">
-        <h2 className="text-xl font-semibold">Setup — 3 steps</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-text-primary">
+          Setup — 3 steps
+        </h2>
 
-        {/* Step 1 */}
-        <div className="space-y-3">
-          <h3 className="text-base font-semibold text-gray-200">
-            Step 1 — Configure your HTTP client
-          </h3>
-          <p className="text-sm text-gray-400">
-            Prefix your existing API calls with the MandateZ proxy URL and add three headers:
-            the agent ID, your owner ID, and the real target URL. Everything else — auth
-            headers, body, method — stays identical.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Python</div>
-              <pre className="rounded-lg border border-gray-800 bg-gray-950 p-4 text-xs overflow-x-auto leading-relaxed">
-                <code>{PYTHON_EXAMPLE}</code>
-              </pre>
+        <Card variant="default">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Tag variant="info">STEP 01</Tag>
+              <CardTitle className="text-base">
+                Configure your HTTP client
+              </CardTitle>
             </div>
-            <div>
-              <div className="text-xs uppercase tracking-wider text-gray-500 mb-2">Node.js</div>
-              <pre className="rounded-lg border border-gray-800 bg-gray-950 p-4 text-xs overflow-x-auto leading-relaxed">
-                <code>{NODE_EXAMPLE}</code>
-              </pre>
+            <CardDescription>
+              Prefix your existing API calls with the MandateZ proxy URL and
+              add three headers: agent ID, owner ID, target URL. Everything
+              else stays identical.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <CopyCodeBlock label="PYTHON" code={PYTHON_EXAMPLE} />
+              <CopyCodeBlock label="NODE.JS" code={NODE_EXAMPLE} />
             </div>
-          </div>
-        </div>
+            <CopyCodeBlock label="CURL" code={CURL_EXAMPLE} />
+          </CardContent>
+        </Card>
 
-        {/* Step 2 */}
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-gray-200">
-            Step 2 — Set policies in your dashboard
-          </h3>
-          <p className="text-sm text-gray-400">
-            Define which action types and resource patterns the agent is allowed to hit. The
-            proxy evaluates every call against these rules before forwarding.{' '}
-            <Link href="/reports" className="text-blue-400 hover:text-blue-300">
-              Open Reports to manage policies →
-            </Link>
-          </p>
-        </div>
+        <Card variant="default">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Tag variant="info">STEP 02</Tag>
+              <CardTitle className="text-base">
+                Set policies in your dashboard
+              </CardTitle>
+            </div>
+            <CardDescription>
+              Define which action types and resource patterns the agent is
+              allowed to hit. The proxy evaluates every call against these
+              rules before forwarding.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/policies">Configure policies →</Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-        {/* Step 3 */}
-        <div className="space-y-2">
-          <h3 className="text-base font-semibold text-gray-200">
-            Step 3 — Watch events stream in real time
-          </h3>
-          <p className="text-sm text-gray-400">
-            Every proxied call shows up in the live event feed — allowed, blocked, or flagged.
-            Signatures are verifiable, and the trust score updates in the background.{' '}
-            <Link href="/" className="text-blue-400 hover:text-blue-300">
-              Open the event feed →
-            </Link>
-          </p>
-        </div>
+        <Card variant="default">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Tag variant="info">STEP 03</Tag>
+              <CardTitle className="text-base">
+                Watch events stream in real time
+              </CardTitle>
+            </div>
+            <CardDescription>
+              Every proxied call shows up in the live event feed — allowed,
+              blocked, or flagged. Signatures are verifiable, and the trust
+              score updates in the background.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/">Open the event feed →</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </section>
 
-      {/* Section C — What Gets Governed */}
+      {/* Configuration */}
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">What gets governed</h2>
-        <p className="text-sm text-gray-400 max-w-3xl">
-          The proxy automatically maps each target URL to a resource string your policies can
-          match. Well-known API hosts map to a short prefix; custom hosts fall back to the full
-          hostname.
-        </p>
-        <div className="overflow-x-auto rounded-lg border border-gray-800">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-900/60 text-gray-400 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">API</th>
-                <th className="text-left px-4 py-3 font-medium">Resource pattern</th>
-                <th className="text-left px-4 py-3 font-medium">Auto-detected</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {SUPPORTED_TARGETS.map((t) => (
-                <tr key={t.api} className="text-gray-300">
-                  <td className="px-4 py-3">{t.api}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-400">{t.pattern}</td>
-                  <td className="px-4 py-3 text-emerald-400">
-                    {t.autoDetected ? '✓' : ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <h2 className="text-xl font-semibold tracking-tight text-text-primary">
+          Endpoint
+        </h2>
+        <Card variant="elevated">
+          <CardHeader>
+            <CardTitle className="text-base">Proxy base URL</CardTitle>
+            <CardDescription>
+              Point your HTTP client here. Auth is per-call via the{' '}
+              <code className="font-mono text-text-primary">
+                X-MandateZ-Agent-ID
+              </code>{' '}
+              and{' '}
+              <code className="font-mono text-text-primary">
+                X-MandateZ-Owner-ID
+              </code>{' '}
+              headers.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CopyCodeBlock label="BASE URL" code={PROXY_BASE} />
+          </CardContent>
+        </Card>
       </section>
 
-      {/* Section D — Privacy */}
-      <section className="space-y-3 rounded-xl border border-gray-800 bg-gray-950/40 p-6 max-w-3xl">
-        <h2 className="text-base font-semibold text-gray-200">Privacy</h2>
-        <p className="text-sm text-gray-400 leading-relaxed">
-          MandateZ Proxy does not store request or response bodies. Only the action type, resource,
-          outcome, policy ID, HTTP method, status code, and timestamp are logged — never your
-          prompts, API payloads, or upstream responses. Every logged event is Ed25519-signed
-          using an escrowed key bound to your agent ID, so the audit trail is
-          cryptographically verifiable without MandateZ having access to your workload data.
+      {/* Supported targets */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold tracking-tight text-text-primary">
+          What gets governed
+        </h2>
+        <p className="max-w-3xl text-sm text-text-secondary">
+          The proxy automatically maps each target URL to a resource string
+          your policies can match. Well-known API hosts map to a short prefix;
+          custom hosts fall back to the full hostname.
         </p>
+        <Card variant="default" className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border-default bg-bg-subtle/40">
+                <tr className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+                  <th className="px-4 py-3 text-left font-medium">API</th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    Resource pattern
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    Auto-detected
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-default">
+                {SUPPORTED_TARGETS.map((t) => (
+                  <tr key={t.api} className="text-text-primary">
+                    <td className="px-4 py-3">{t.api}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-text-secondary">
+                      {t.pattern}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Tag variant="success">YES</Tag>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </section>
+
+      {/* Privacy */}
+      <Card variant="default" className="max-w-3xl">
+        <CardHeader>
+          <CardTitle className="text-base">Privacy</CardTitle>
+          <CardDescription>
+            MandateZ Proxy does not store request or response bodies. Only the
+            action type, resource, outcome, policy ID, HTTP method, status
+            code, and timestamp are logged — never your prompts, API
+            payloads, or upstream responses. Every logged event is
+            Ed25519-signed using an escrowed key bound to your agent ID, so
+            the audit trail is cryptographically verifiable without MandateZ
+            having access to your workload data.
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
       {/* CTA */}
-      <div className="flex flex-wrap gap-3 pt-4">
-        <Link
-          href="/"
-          className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-400 transition-colors"
-        >
-          See live events →
-        </Link>
-        <Link
-          href="/reports"
-          className="rounded-md border border-gray-700 px-4 py-2 text-sm font-medium text-gray-300 hover:border-gray-500 hover:text-gray-100 transition-colors"
-        >
-          Configure policies
-        </Link>
+      <div className="flex flex-wrap gap-3 border-t border-border-default pt-6">
+        <Button variant="primary" asChild>
+          <Link href="/">See live events →</Link>
+        </Button>
+        <Button variant="secondary" asChild>
+          <Link href="/policies">Configure policies</Link>
+        </Button>
       </div>
     </div>
   );

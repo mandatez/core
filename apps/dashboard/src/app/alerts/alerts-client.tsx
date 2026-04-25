@@ -1,6 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  Tag,
+  cn,
+} from '@/components/ui';
 
 interface AlertConfig {
   owner_id: string;
@@ -34,6 +45,12 @@ const WEBHOOK_PAYLOAD_EXAMPLE = `{
   "timestamp": "2026-04-22T..."
 }`;
 
+const inputClass =
+  'w-full rounded-md border border-border-default bg-bg-base px-3 py-2 ' +
+  'text-sm font-mono text-text-primary placeholder:text-text-muted ' +
+  'focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 ' +
+  'transition-colors';
+
 function defaultConfig(ownerId: string): AlertConfig {
   return {
     owner_id: ownerId,
@@ -47,6 +64,49 @@ function defaultConfig(ownerId: string): AlertConfig {
   };
 }
 
+interface RuleDef {
+  key:
+    | 'alert_on_blocked'
+    | 'alert_on_flagged'
+    | 'alert_on_grade_change'
+    | 'alert_on_identity_breach';
+  label: string;
+  hint: string;
+  severity: 'danger' | 'warning' | 'info';
+  actionTags: string[];
+}
+
+const RULES: RuleDef[] = [
+  {
+    key: 'alert_on_blocked',
+    label: 'Agent action blocked',
+    hint: 'Fires when policy engine prevents an action.',
+    severity: 'danger',
+    actionTags: ['BLOCK', 'POLICY'],
+  },
+  {
+    key: 'alert_on_flagged',
+    label: 'Agent action flagged',
+    hint: 'Fires when an action is held for human approval.',
+    severity: 'warning',
+    actionTags: ['FLAG', 'OVERSIGHT'],
+  },
+  {
+    key: 'alert_on_grade_change',
+    label: 'Trust grade change',
+    hint: 'Fires when an agent changes verified status.',
+    severity: 'info',
+    actionTags: ['GRADE'],
+  },
+  {
+    key: 'alert_on_identity_breach',
+    label: 'Identity breach detected',
+    hint: 'Fires when an identity check returns a known breach.',
+    severity: 'danger',
+    actionTags: ['BREACH', 'IDENTITY'],
+  },
+];
+
 export default function AlertsClient() {
   const [ownerId, setOwnerId] = useState('');
   const [config, setConfig] = useState<AlertConfig>(defaultConfig(''));
@@ -56,7 +116,6 @@ export default function AlertsClient() {
   const [slackTest, setSlackTest] = useState<TestStatus>({ kind: 'idle' });
   const [webhookTest, setWebhookTest] = useState<TestStatus>({ kind: 'idle' });
 
-  // Hydrate owner_id from localStorage if present (no Supabase auth wired yet).
   useEffect(() => {
     const stored =
       typeof window !== 'undefined'
@@ -150,330 +209,350 @@ export default function AlertsClient() {
   const update = <K extends keyof AlertConfig>(key: K, value: AlertConfig[K]) =>
     setConfig((c) => ({ ...c, [key]: value }));
 
+  const enabledRuleCount = RULES.filter((r) => config[r.key]).length;
+
   return (
     <div className="space-y-10">
       {/* Owner ID */}
-      <SectionCard
-        label="Owner"
-        title="Your MandateZ owner ID"
-        description="Used to scope alert configuration. Pre-filled from your last session."
-      >
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            value={ownerId}
-            onChange={(e) => setOwnerId(e.target.value)}
-            placeholder="owner_123"
-            className="flex-1 rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono"
-          />
-          <button
-            onClick={() => loadConfig(ownerId.trim())}
-            disabled={loading || !ownerId.trim()}
-            className="px-4 py-2 text-sm border border-gray-700 rounded-md text-gray-300 hover:border-gray-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Loading…' : 'Load config'}
-          </button>
-        </div>
-      </SectionCard>
+      <Card variant="elevated">
+        <CardHeader>
+          <CardTitle>Owner ID</CardTitle>
+          <CardDescription>
+            Used to scope alert configuration. Pre-filled from your last
+            session.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              type="text"
+              value={ownerId}
+              onChange={(e) => setOwnerId(e.target.value)}
+              placeholder="owner_123"
+              className={cn(inputClass, 'flex-1')}
+            />
+            <Button
+              variant="secondary"
+              onClick={() => loadConfig(ownerId.trim())}
+              disabled={loading || !ownerId.trim()}
+            >
+              {loading ? 'Loading…' : 'Load config'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Channels */}
-      <SectionCard
-        label="A · Channels"
-        title="Delivery channels"
-        description="Configure one or more. MandateZ fan-outs alerts to every channel you enable."
-      >
-        <div className="space-y-6">
-          {/* Slack */}
-          <ChannelField
-            title="Slack Webhook"
-            helper="Create a Slack webhook at api.slack.com/apps"
-            value={config.slack_webhook_url ?? ''}
-            onChange={(v) => update('slack_webhook_url', v || null)}
-            placeholder="https://hooks.slack.com/services/..."
-            trailing={
-              <TestButton
-                label="Send test"
-                status={slackTest}
+      <section className="space-y-4">
+        <header className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-text-primary">
+              Channels
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              Configure one or more. Alerts fan out to every connected
+              channel.
+            </p>
+          </div>
+        </header>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <ChannelCard
+            title="Slack"
+            description="Webhook delivery to a Slack channel."
+            connected={Boolean(config.slack_webhook_url)}
+            input={
+              <input
+                type="text"
+                value={config.slack_webhook_url ?? ''}
+                onChange={(e) =>
+                  update('slack_webhook_url', e.target.value || null)
+                }
+                placeholder="https://hooks.slack.com/services/…"
+                className={inputClass}
+              />
+            }
+            primaryAction={
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={slackTest.kind === 'sending'}
                 onClick={() =>
                   sendTest('slack', config.slack_webhook_url, setSlackTest)
                 }
+              >
+                {slackTest.kind === 'sending'
+                  ? 'Sending…'
+                  : slackTest.kind === 'ok'
+                    ? 'Delivered'
+                    : 'Send test'}
+              </Button>
+            }
+            footnote={
+              slackTest.kind === 'error' ? slackTest.message : undefined
+            }
+            footnoteTone={slackTest.kind === 'error' ? 'danger' : 'muted'}
+          />
+
+          <ChannelCard
+            title="Email"
+            description="Transactional email to your security inbox."
+            connected={Boolean(config.email_address)}
+            input={
+              <input
+                type="email"
+                value={config.email_address ?? ''}
+                onChange={(e) =>
+                  update('email_address', e.target.value || null)
+                }
+                placeholder="security@yourcompany.com"
+                className={inputClass}
               />
             }
           />
 
-          {/* Email */}
-          <ChannelField
-            title="Email"
-            helper="Alerts delivered via transactional email. Respect your security inbox."
-            value={config.email_address ?? ''}
-            onChange={(v) => update('email_address', v || null)}
-            placeholder="security@yourcompany.com"
-            type="email"
+          <ChannelCard
+            title="Webhook"
+            description="POST JSON to your endpoint — PagerDuty, Opsgenie, SIEM."
+            connected={Boolean(config.webhook_url)}
+            input={
+              <input
+                type="text"
+                value={config.webhook_url ?? ''}
+                onChange={(e) => update('webhook_url', e.target.value || null)}
+                placeholder="https://your-api.com/mandatez-webhook"
+                className={inputClass}
+              />
+            }
+            primaryAction={
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={webhookTest.kind === 'sending'}
+                onClick={() =>
+                  sendTest('webhook', config.webhook_url, setWebhookTest)
+                }
+              >
+                {webhookTest.kind === 'sending'
+                  ? 'Sending…'
+                  : webhookTest.kind === 'ok'
+                    ? 'Delivered'
+                    : 'Send test'}
+              </Button>
+            }
+            footnote={
+              webhookTest.kind === 'error' ? webhookTest.message : undefined
+            }
+            footnoteTone={webhookTest.kind === 'error' ? 'danger' : 'muted'}
+            extras={
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPayload((v) => !v)}
+                  className="font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-accent-primary transition-colors"
+                >
+                  {showPayload ? '▾ Hide payload' : '▸ Payload preview'}
+                </button>
+                {showPayload && (
+                  <pre className="overflow-x-auto rounded-md border border-border-default bg-bg-base p-3 font-mono text-[11px] leading-relaxed text-text-secondary">
+                    {WEBHOOK_PAYLOAD_EXAMPLE}
+                  </pre>
+                )}
+              </div>
+            }
           />
+        </div>
+      </section>
 
-          {/* Custom webhook */}
-          <div className="space-y-3">
-            <ChannelField
-              title="Custom Webhook"
-              helper="POST JSON to your own endpoint. Use for PagerDuty, Opsgenie, or your SIEM."
-              value={config.webhook_url ?? ''}
-              onChange={(v) => update('webhook_url', v || null)}
-              placeholder="https://your-api.com/mandatez-webhook"
-              trailing={
-                <TestButton
-                  label="Send test"
-                  status={webhookTest}
-                  onClick={() =>
-                    sendTest('webhook', config.webhook_url, setWebhookTest)
-                  }
-                />
-              }
-            />
-            <button
-              type="button"
-              onClick={() => setShowPayload((v) => !v)}
-              className="text-xs font-mono text-gray-500 hover:text-blue-300 transition-colors"
-            >
-              {showPayload ? '▾' : '▸'} Payload preview
-            </button>
-            {showPayload && (
-              <pre className="text-xs text-gray-300 bg-black/40 border border-gray-800 rounded-md p-4 overflow-x-auto font-mono">
-                {WEBHOOK_PAYLOAD_EXAMPLE}
-              </pre>
-            )}
+      {/* Rules */}
+      <section className="space-y-4">
+        <header className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-text-primary">
+              Alert rules
+            </h2>
+            <p className="mt-1 text-sm text-text-secondary">
+              Only enabled rules fire notifications. Disable anything that
+              creates noise.
+            </p>
           </div>
-        </div>
-      </SectionCard>
+          <Tag variant="neutral">
+            {enabledRuleCount}/{RULES.length} ENABLED
+          </Tag>
+        </header>
 
-      {/* Triggers */}
-      <SectionCard
-        label="B · Triggers"
-        title="When to alert"
-        description="Only enabled triggers fire notifications. Disable anything that creates noise."
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <ToggleRow
-            label="Agent action blocked"
-            hint="Fires when policy engine prevents an action."
-            value={config.alert_on_blocked}
-            onChange={(v) => update('alert_on_blocked', v)}
-            tone="red"
+        {RULES.length === 0 ? (
+          <EmptyState
+            title="No alert rules"
+            description="Add a rule to start receiving notifications when your agents trigger policy decisions."
           />
-          <ToggleRow
-            label="Agent action flagged"
-            hint="Fires when an action is held for human approval."
-            value={config.alert_on_flagged}
-            onChange={(v) => update('alert_on_flagged', v)}
-            tone="amber"
-          />
-          <ToggleRow
-            label="Trust grade change"
-            hint="Fires when an agent changes verified status."
-            value={config.alert_on_grade_change}
-            onChange={(v) => update('alert_on_grade_change', v)}
-            tone="blue"
-          />
-          <ToggleRow
-            label="Identity breach detected"
-            hint="Fires when an identity check returns a known breach."
-            value={config.alert_on_identity_breach}
-            onChange={(v) => update('alert_on_identity_breach', v)}
-            tone="red"
-          />
-        </div>
-      </SectionCard>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {RULES.map((rule) => (
+              <RuleCard
+                key={rule.key}
+                rule={rule}
+                enabled={config[rule.key]}
+                onToggle={(v) => update(rule.key, v)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* Save */}
-      <div className="flex flex-col gap-3 border-t border-gray-800 pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t border-border-default pt-6 sm:flex-row sm:items-center sm:justify-between">
         <StatusBanner status={saveStatus} />
-        <button
+        <Button
+          variant="primary"
           onClick={saveConfig}
+          loading={saveStatus.kind === 'loading'}
           disabled={saveStatus.kind === 'loading' || !ownerId.trim()}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
         >
-          {saveStatus.kind === 'loading' ? 'Saving…' : 'Save Alert Config'}
-        </button>
+          {saveStatus.kind === 'loading' ? 'Saving…' : 'Save alert config'}
+        </Button>
       </div>
 
       {/* How alerts work */}
-      <div className="border-t border-gray-800 pt-8">
-        <h3 className="text-lg font-medium mb-2">How alerts work</h3>
-        <p className="text-sm text-gray-400 leading-relaxed max-w-2xl">
-          When any of the above events occur for your agents, MandateZ sends an
-          instant notification to all configured channels.{' '}
-          <span className="text-gray-200">
-            Blocked events fire before the action executes
-          </span>{' '}
-          — you know in real time, not after the fact.
-        </p>
-      </div>
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle className="text-base">How alerts work</CardTitle>
+          <CardDescription>
+            When a rule fires, MandateZ sends an instant notification to every
+            connected channel. Blocked events fire{' '}
+            <span className="text-text-primary">before</span> the action
+            executes — you know in real time, not after the fact.
+          </CardDescription>
+        </CardHeader>
+      </Card>
     </div>
   );
 }
 
 /* ----------------------------- primitives ------------------------------ */
 
-function SectionCard({
-  label,
+function ChannelCard({
   title,
   description,
-  children,
+  connected,
+  input,
+  primaryAction,
+  footnote,
+  footnoteTone = 'muted',
+  extras,
 }: {
-  label: string;
   title: string;
   description: string;
-  children: React.ReactNode;
+  connected: boolean;
+  input: React.ReactNode;
+  primaryAction?: React.ReactNode;
+  footnote?: string;
+  footnoteTone?: 'danger' | 'muted';
+  extras?: React.ReactNode;
 }) {
   return (
-    <section className="border border-gray-800 rounded-lg p-6 space-y-5 bg-gray-950/40">
-      <div>
-        <div className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">
-          {label}
+    <Card variant="elevated" className="flex flex-col">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">{title}</CardTitle>
+          <Tag variant={connected ? 'success' : 'neutral'}>
+            {connected ? 'CONNECTED' : 'NOT SET'}
+          </Tag>
         </div>
-        <h3 className="text-lg font-semibold mt-2">{title}</h3>
-        <p className="text-sm text-gray-500 mt-1">{description}</p>
-      </div>
-      {children}
-    </section>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {input}
+        {primaryAction}
+        {footnote && (
+          <span
+            className={cn(
+              'font-mono text-[11px]',
+              footnoteTone === 'danger'
+                ? 'text-accent-danger'
+                : 'text-text-muted',
+            )}
+          >
+            {footnote}
+          </span>
+        )}
+        {extras}
+      </CardContent>
+    </Card>
   );
 }
 
-function ChannelField({
-  title,
-  helper,
-  value,
-  onChange,
-  placeholder,
-  type,
-  trailing,
+function RuleCard({
+  rule,
+  enabled,
+  onToggle,
 }: {
-  title: string;
-  helper: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  type?: string;
-  trailing?: React.ReactNode;
+  rule: RuleDef;
+  enabled: boolean;
+  onToggle: (v: boolean) => void;
 }) {
-  return (
-    <div>
-      <div className="flex items-baseline justify-between">
-        <label className="text-sm font-medium text-gray-200">{title}</label>
-        <span className="text-[11px] text-gray-500">{helper}</span>
-      </div>
-      <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-        <input
-          type={type ?? 'text'}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="flex-1 rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono"
-        />
-        {trailing}
-      </div>
-    </div>
-  );
-}
-
-function TestButton({
-  label,
-  status,
-  onClick,
-}: {
-  label: string;
-  status: TestStatus;
-  onClick: () => void;
-}) {
-  const text =
-    status.kind === 'sending'
-      ? 'Sending…'
-      : status.kind === 'ok'
-        ? 'Delivered ✓'
-        : label;
-
-  const color =
-    status.kind === 'ok'
-      ? 'border-emerald-700 text-emerald-300'
-      : status.kind === 'error'
-        ? 'border-red-700 text-red-300'
-        : 'border-gray-700 text-gray-300 hover:border-gray-500 hover:text-white';
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        onClick={onClick}
-        disabled={status.kind === 'sending'}
-        className={`px-4 py-2 text-xs border rounded-md transition-colors disabled:opacity-50 ${color}`}
-      >
-        {text}
-      </button>
-      {status.kind === 'error' && (
-        <span className="text-[10px] text-red-400 font-mono max-w-[220px] truncate">
-          {status.message}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function ToggleRow({
-  label,
-  hint,
-  value,
-  onChange,
-  tone,
-}: {
-  label: string;
-  hint: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  tone: 'red' | 'amber' | 'blue';
-}) {
-  const toneDot =
-    tone === 'red' ? 'bg-red-400' : tone === 'amber' ? 'bg-amber-400' : 'bg-blue-400';
-
+  const severityVariant: 'danger' | 'warning' | 'info' = rule.severity;
   return (
     <button
       type="button"
-      onClick={() => onChange(!value)}
-      className="group flex items-center justify-between gap-4 border border-gray-800 rounded-md bg-gray-950/60 p-4 text-left hover:border-gray-700 transition-colors"
+      onClick={() => onToggle(!enabled)}
+      className={cn(
+        'group text-left transition-colors',
+        'rounded-lg border bg-bg-elevated p-4',
+        enabled
+          ? 'border-border-strong'
+          : 'border-border-default hover:border-border-strong',
+      )}
     >
-      <div className="flex items-start gap-3 min-w-0">
-        <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${value ? toneDot : 'bg-gray-700'}`} />
-        <div className="min-w-0">
-          <div className="text-sm font-medium text-gray-100">{label}</div>
-          <div className="text-xs text-gray-500 mt-0.5">{hint}</div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Tag variant={severityVariant}>{rule.severity.toUpperCase()}</Tag>
+            {rule.actionTags.map((t) => (
+              <Tag key={t}>{t}</Tag>
+            ))}
+          </div>
+          <div>
+            <div className="text-sm font-medium text-text-primary">
+              {rule.label}
+            </div>
+            <div className="mt-0.5 text-xs leading-relaxed text-text-secondary">
+              {rule.hint}
+            </div>
+          </div>
         </div>
-      </div>
-      <span
-        className={`relative shrink-0 h-6 w-11 rounded-full transition-colors ${
-          value ? 'bg-blue-600' : 'bg-gray-800'
-        }`}
-        aria-hidden
-      >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
-            value ? 'left-[22px]' : 'left-0.5'
-          }`}
-        />
-      </span>
+          className={cn(
+            'relative shrink-0 h-6 w-11 rounded-full transition-colors',
+            enabled ? 'bg-accent-primary' : 'bg-bg-overlay',
+          )}
+          aria-hidden
+        >
+          <span
+            className={cn(
+              'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all',
+              enabled ? 'left-[22px]' : 'left-0.5',
+            )}
+          />
+        </span>
+      </div>
     </button>
   );
 }
 
 function StatusBanner({ status }: { status: Status }) {
   if (status.kind === 'idle' || status.kind === 'loading') {
-    return <span className="text-xs text-gray-500 font-mono" />;
+    return <span className="font-mono text-xs text-text-muted" />;
   }
   if (status.kind === 'success') {
     return (
-      <span className="text-xs text-emerald-300 font-mono">
+      <span className="font-mono text-xs uppercase tracking-wider text-accent-success">
         ✓ {status.message}
       </span>
     );
   }
   return (
-    <span className="text-xs text-red-300 font-mono">
+    <span className="font-mono text-xs uppercase tracking-wider text-accent-danger">
       ✗ {status.message}
     </span>
   );

@@ -2,6 +2,19 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  EmptyState,
+  LoadingSpinner,
+  NumberDisplay,
+  Tag,
+  cn,
+} from '@/components/ui';
 
 type RiskLevel = 'critical' | 'high' | 'medium';
 
@@ -29,30 +42,32 @@ interface ShadowScanResponse {
   scanned_targets: string[];
 }
 
-const RISK_STYLE: Record<RiskLevel, { label: string; badge: string; dot: string }> = {
-  critical: {
-    label: 'Critical',
-    badge: 'bg-red-900/40 text-red-300 border-red-800',
-    dot: 'bg-red-400',
-  },
-  high: {
-    label: 'High',
-    badge: 'bg-amber-900/40 text-amber-300 border-amber-800',
-    dot: 'bg-amber-400',
-  },
-  medium: {
-    label: 'Medium',
-    badge: 'bg-yellow-900/30 text-yellow-300 border-yellow-800',
-    dot: 'bg-yellow-400',
-  },
+const RISK_TAG: Record<RiskLevel, 'danger' | 'warning'> = {
+  critical: 'danger',
+  high: 'warning',
+  medium: 'warning',
 };
 
-function riskScoreColor(score: number): { text: string; bar: string; label: string } {
-  if (score >= 75) return { text: 'text-red-400', bar: 'bg-red-500', label: 'Severe Exposure' };
-  if (score >= 50) return { text: 'text-amber-400', bar: 'bg-amber-500', label: 'High Exposure' };
-  if (score >= 25) return { text: 'text-yellow-400', bar: 'bg-yellow-500', label: 'Moderate Exposure' };
-  return { text: 'text-emerald-400', bar: 'bg-emerald-500', label: 'Low Exposure' };
+const RISK_LABEL: Record<RiskLevel, string> = {
+  critical: 'CRITICAL',
+  high: 'HIGH',
+  medium: 'MEDIUM',
+};
+
+function riskScoreAccent(
+  score: number,
+): { accent: 'success' | 'warning' | 'danger'; label: string } {
+  if (score >= 75) return { accent: 'danger', label: 'SEVERE EXPOSURE' };
+  if (score >= 50) return { accent: 'danger', label: 'HIGH EXPOSURE' };
+  if (score >= 25) return { accent: 'warning', label: 'MODERATE EXPOSURE' };
+  return { accent: 'success', label: 'LOW EXPOSURE' };
 }
+
+const inputClass =
+  'w-full rounded-md border border-border-default bg-bg-base px-3 py-2 ' +
+  'text-sm font-mono text-text-primary placeholder:text-text-muted ' +
+  'focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20 ' +
+  'transition-colors';
 
 export function ShadowScanClient({ initialOwnerId = '' }: { initialOwnerId?: string }) {
   const [ownerId, setOwnerId] = useState(initialOwnerId);
@@ -80,7 +95,9 @@ export function ShadowScanClient({ initialOwnerId = '' }: { initialOwnerId?: str
       });
 
       if (!res.ok) {
-        const err = (await res.json().catch(() => ({ error: 'Scan failed' }))) as { error?: string };
+        const err = (await res.json().catch(() => ({ error: 'Scan failed' }))) as {
+          error?: string;
+        };
         throw new Error(err.error ?? `HTTP ${res.status}`);
       }
 
@@ -149,189 +166,183 @@ export function ShadowScanClient({ initialOwnerId = '' }: { initialOwnerId?: str
   return (
     <div className="space-y-8">
       {/* Scan form */}
-      <div className="border border-gray-800 rounded-lg p-6 bg-gray-950/40">
-        <div className="space-y-5">
-          <div>
-            <label htmlFor="owner-id" className="block text-sm font-medium text-gray-200 mb-2">
-              Owner ID <span className="text-gray-500">(optional)</span>
+      <Card variant="elevated">
+        <CardHeader>
+          <CardTitle className="text-base">Run a scan</CardTitle>
+          <CardDescription>
+            Free, no account required. Add a GitHub token for deep repository
+            analysis — token is used in-memory and never stored.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="owner-id"
+              className="block font-mono text-[10px] uppercase tracking-widest text-text-muted"
+            >
+              Owner ID <span className="text-text-muted">(optional)</span>
             </label>
             <input
               id="owner-id"
               type="text"
               value={ownerId}
               onChange={(e) => setOwnerId(e.target.value)}
-              placeholder="user_2abc... — leave blank for anonymous demo scan"
-              className="w-full px-4 py-2.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-100 placeholder-gray-600 font-mono text-sm focus:outline-none focus:border-blue-600 transition-colors"
+              placeholder="user_2abc… — leave blank for anonymous demo scan"
+              className={inputClass}
             />
           </div>
 
-          <div>
-            <label htmlFor="github-token" className="block text-sm font-medium text-gray-200 mb-2">
-              GitHub Token <span className="text-gray-500">(optional)</span>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="github-token"
+              className="block font-mono text-[10px] uppercase tracking-widest text-text-muted"
+            >
+              GitHub token{' '}
+              <span className="text-text-muted">(optional)</span>
             </label>
             <input
               id="github-token"
               type="password"
               value={githubToken}
               onChange={(e) => setGithubToken(e.target.value)}
-              placeholder="ghp_... for deeper scan of your repositories"
-              className="w-full px-4 py-2.5 rounded-lg bg-gray-900 border border-gray-800 text-gray-100 placeholder-gray-600 font-mono text-sm focus:outline-none focus:border-blue-600 transition-colors"
+              placeholder="ghp_… for deeper scan of your repositories"
+              className={inputClass}
             />
-            <p className="text-xs text-gray-500 mt-2">
-              Scans <code className="font-mono text-gray-400">.github/workflows/*.yml</code> for unregistered LangChain, CrewAI, AutoGen and LlamaIndex agents. Token is used in-memory and never stored.
+            <p className="text-xs text-text-muted">
+              Scans{' '}
+              <code className="font-mono text-text-secondary">
+                .github/workflows/*.yml
+              </code>{' '}
+              for unregistered LangChain, CrewAI, AutoGen and LlamaIndex
+              agents.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="primary"
+              size="lg"
               onClick={handleScan}
+              loading={scanning}
               disabled={scanning}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
             >
-              {scanning ? (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
-                    <path d="M21 12a9 9 0 11-6.219-8.56" strokeLinecap="round" />
-                  </svg>
-                  Scanning...
-                </>
-              ) : (
-                <>
-                  Run Shadow Scan
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="M21 21l-4.35-4.35" />
-                  </svg>
-                </>
-              )}
-            </button>
-            <span className="text-xs text-gray-500">
-              Free · no account required
+              {scanning ? 'Scanning…' : 'Run shadow scan'}
+            </Button>
+            <span className="font-mono text-[11px] uppercase tracking-wider text-text-muted">
+              FREE · NO ACCOUNT REQUIRED
             </span>
           </div>
-
-          <p className="text-xs text-gray-500 border-t border-gray-900 pt-4">
-            Basic scan runs without tokens using representative patterns. Connect GitHub for full repository analysis.
-          </p>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {error && (
-        <div className="border border-red-800 bg-red-900/20 rounded-lg p-4 text-sm text-red-300">
-          {error}
-        </div>
+        <Card variant="danger-tinted">
+          <CardContent className="px-4 py-3">
+            <p className="text-sm text-accent-danger">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* During scan */}
+      {scanning && !result && (
+        <Card variant="default">
+          <CardContent className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <LoadingSpinner size="lg" />
+            <p className="font-mono text-xs uppercase tracking-widest text-text-muted">
+              Scanning targets · cross-referencing registered agents
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pre-scan empty state */}
+      {!scanning && !result && !error && (
+        <EmptyState
+          title="What is shadow agent discovery?"
+          description="Most teams don't know which AI agents are running in their stack. Shadow Scan inspects your repos, workflows, and infrastructure for agent fingerprints, then flags any operating without identity, policy, or audit trail."
+        />
       )}
 
       {/* Results */}
       {result && (
         <div className="space-y-6">
-          {/* Summary bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <SummaryCard label="Agents Discovered" value={result.summary.total_discovered} color="text-gray-100" />
-            <SummaryCard label="Unregistered" value={result.summary.unregistered} color="text-amber-400" />
-            <SummaryCard label="Critical Risk" value={result.summary.critical_risk} color="text-red-400" />
-            <SummaryCard label="Scan Mode" value={result.scan_mode === 'authenticated' ? 'LIVE' : 'DEMO'} color={result.scan_mode === 'authenticated' ? 'text-emerald-400' : 'text-blue-400'} />
+          {/* Stats strip */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryCard
+              label="DISCOVERED"
+              value={result.summary.total_discovered}
+            />
+            <SummaryCard
+              label="UNREGISTERED"
+              value={result.summary.unregistered}
+              accent="warning"
+            />
+            <SummaryCard
+              label="CRITICAL RISK"
+              value={result.summary.critical_risk}
+              accent="danger"
+            />
+            <SummaryCard
+              label="SCAN MODE"
+              value={result.scan_mode === 'authenticated' ? 'LIVE' : 'DEMO'}
+              accent={result.scan_mode === 'authenticated' ? 'success' : 'primary'}
+            />
           </div>
 
-          {/* Agents table */}
-          <div className="border border-gray-800 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-900/60 border-b border-gray-800">
-                  <tr className="text-left text-xs text-gray-500 uppercase tracking-wide">
-                    <th className="px-4 py-3 font-medium">Name</th>
-                    <th className="px-4 py-3 font-medium">Location</th>
-                    <th className="px-4 py-3 font-medium">Framework</th>
-                    <th className="px-4 py-3 font-medium">Risk</th>
-                    <th className="px-4 py-3 font-medium">Registered</th>
-                    <th className="px-4 py-3 font-medium text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {result.discovered_agents.map((agent, i) => {
-                    const risk = RISK_STYLE[agent.risk_level];
-                    return (
-                      <tr key={i} className="hover:bg-gray-900/30 transition-colors">
-                        <td className="px-4 py-3 text-gray-200 font-mono text-xs max-w-[220px] truncate">
-                          {agent.name}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 text-xs max-w-[260px] truncate">
-                          {agent.location}
-                        </td>
-                        <td className="px-4 py-3 text-gray-300 text-xs">{agent.framework}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-medium ${risk.badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${risk.dot}`} />
-                            {risk.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          {agent.mandatez_registered ? (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-medium bg-emerald-900/40 text-emerald-300 border-emerald-800">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                              Registered
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-xs font-medium bg-gray-900 text-gray-400 border-gray-800">
-                              <span className="w-1.5 h-1.5 rounded-full bg-gray-600" />
-                              Shadow
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {agent.mandatez_registered ? (
-                            <span className="text-xs text-gray-600">—</span>
-                          ) : (
-                            <Link
-                              href={buildRegisterHref(agent)}
-                              className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300"
-                            >
-                              Register with MandateZ
-                              <span aria-hidden>→</span>
-                            </Link>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Post-scan all-clear empty state */}
+          {result.discovered_agents.length === 0 ? (
+            <EmptyState
+              title="All clear"
+              description="No shadow agents detected in the targets we could reach. Run again with a GitHub token connected to deepen the scan."
+              action={<Tag variant="success">CLEAN</Tag>}
+            />
+          ) : (
+            <section className="space-y-3">
+              <header className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold tracking-tight text-text-primary">
+                  Discovered agents
+                </h2>
+                <Tag variant="neutral">
+                  {result.discovered_agents.length} TOTAL
+                </Tag>
+              </header>
+              <div className="grid gap-3 md:grid-cols-2">
+                {result.discovered_agents.map((agent, i) => (
+                  <DiscoveredAgentCard
+                    key={i}
+                    agent={agent}
+                    registerHref={buildRegisterHref(agent)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
 
-          {/* Risk report card */}
           <RiskReportCard
             summary={result.summary}
             onDownload={downloadReport}
             onShare={shareReport}
           />
 
-          {/* Free tier funnel */}
           {result.summary.unregistered > 0 && (
-            <div className="border border-blue-900/60 bg-blue-950/20 rounded-lg p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-900/60 flex items-center justify-center flex-shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-300">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-semibold text-gray-100">
-                    You have {result.summary.unregistered} ungoverned {result.summary.unregistered === 1 ? 'agent' : 'agents'}.
-                  </h3>
-                  <p className="text-sm text-gray-400 mt-1">
-                    The scan is free. Registering and governing your agents requires a MandateZ account — five-minute setup, first agent free forever.
-                  </p>
-                  <Link
-                    href="/pricing"
-                    className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
-                  >
-                    Start governing these agents
-                    <span aria-hidden>→</span>
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <Card variant="default">
+              <CardHeader>
+                <CardTitle className="text-base">
+                  You have {result.summary.unregistered} ungoverned{' '}
+                  {result.summary.unregistered === 1 ? 'agent' : 'agents'}
+                </CardTitle>
+                <CardDescription>
+                  The scan is free. Registering and governing your agents
+                  requires a MandateZ account — five-minute setup, first agent
+                  free forever.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="primary" asChild>
+                  <Link href="/pricing">Start governing these agents →</Link>
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}
@@ -339,12 +350,69 @@ export function ShadowScanClient({ initialOwnerId = '' }: { initialOwnerId?: str
   );
 }
 
-function SummaryCard({ label, value, color }: { label: string; value: number | string; color: string }) {
+function SummaryCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number | string;
+  accent?: 'success' | 'warning' | 'danger' | 'primary';
+}) {
   return (
-    <div className="border border-gray-800 rounded-lg p-4">
-      <div className={`text-2xl font-bold ${color}`}>{value}</div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
-    </div>
+    <Card variant="default">
+      <CardContent className="px-4 py-4">
+        <NumberDisplay value={value} size="sm" accent={accent} />
+        <div className="mt-2 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          {label}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DiscoveredAgentCard({
+  agent,
+  registerHref,
+}: {
+  agent: DiscoveredAgent;
+  registerHref: string;
+}) {
+  const variant = agent.mandatez_registered ? 'default' : 'danger-tinted';
+  return (
+    <Card variant={variant}>
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="text-base font-mono break-all leading-snug">
+            {agent.name}
+          </CardTitle>
+          <Tag variant={RISK_TAG[agent.risk_level]}>
+            {RISK_LABEL[agent.risk_level]}
+          </Tag>
+        </div>
+        <CardDescription className="font-mono text-[11px] break-all">
+          {agent.location}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Tag variant="neutral">{agent.framework.toUpperCase()}</Tag>
+          {agent.mandatez_registered ? (
+            <Tag variant="success">REGISTERED</Tag>
+          ) : (
+            <Tag variant="danger">SHADOW</Tag>
+          )}
+        </div>
+        <p className="text-xs leading-relaxed text-text-secondary">
+          {agent.recommendation}
+        </p>
+        {!agent.mandatez_registered && (
+          <Button variant="primary" size="sm" asChild>
+            <Link href={registerHref}>Register this agent →</Link>
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -357,69 +425,97 @@ function RiskReportCard({
   onDownload: () => void;
   onShare: () => void;
 }) {
-  const color = riskScoreColor(summary.risk_score);
+  const meta = riskScoreAccent(summary.risk_score);
+  const barColor =
+    meta.accent === 'success'
+      ? 'bg-accent-success'
+      : meta.accent === 'warning'
+        ? 'bg-accent-warning'
+        : 'bg-accent-danger';
+
   return (
-    <div className="border border-gray-800 rounded-lg p-6 bg-gradient-to-br from-gray-950 to-gray-900/40">
-      <div className="flex items-start justify-between gap-6 flex-wrap">
-        <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wider">Shadow Agent Risk Report</div>
-          <h3 className="text-xl font-semibold text-gray-100 mt-1">Your Agent Exposure</h3>
-        </div>
-        <div className="text-right">
-          <div className={`text-5xl font-bold ${color.text} font-mono leading-none`}>
-            {summary.risk_score}
-            <span className="text-2xl text-gray-600">/100</span>
+    <Card variant="elevated">
+      <CardHeader>
+        <div className="flex items-start justify-between gap-6 flex-wrap">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+              SHADOW AGENT RISK REPORT
+            </div>
+            <CardTitle className="mt-1 text-xl">
+              Your agent exposure
+            </CardTitle>
           </div>
-          <div className={`text-xs uppercase tracking-wider mt-2 ${color.text}`}>
-            {color.label}
+          <div className="text-right">
+            <NumberDisplay
+              value={summary.risk_score}
+              suffix="/100"
+              size="sm"
+              accent={meta.accent}
+            />
+            <div
+              className={cn(
+                'mt-2 font-mono text-[10px] uppercase tracking-widest',
+                meta.accent === 'success' && 'text-accent-success',
+                meta.accent === 'warning' && 'text-accent-warning',
+                meta.accent === 'danger' && 'text-accent-danger',
+              )}
+            >
+              {meta.label}
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="mt-5 h-2 bg-gray-900 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${color.bar} transition-all duration-700`}
-          style={{ width: `${summary.risk_score}%` }}
-        />
-      </div>
-
-      <div className="mt-6 grid grid-cols-3 gap-4 text-sm">
-        <div>
-          <div className="text-gray-500 text-xs">Total discovered</div>
-          <div className="text-gray-100 text-lg font-semibold mt-1">{summary.total_discovered}</div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-bg-base">
+          <div
+            className={cn('h-full transition-all duration-700', barColor)}
+            style={{ width: `${summary.risk_score}%` }}
+          />
         </div>
-        <div>
-          <div className="text-gray-500 text-xs">Unregistered</div>
-          <div className="text-amber-300 text-lg font-semibold mt-1">{summary.unregistered}</div>
-        </div>
-        <div>
-          <div className="text-gray-500 text-xs">Critical</div>
-          <div className="text-red-300 text-lg font-semibold mt-1">{summary.critical_risk}</div>
-        </div>
-      </div>
 
-      <div className="mt-6 flex items-center gap-3 pt-5 border-t border-gray-800">
-        <button
-          onClick={onDownload}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-white text-gray-900 text-sm font-medium transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-          </svg>
-          Download PDF Report
-        </button>
-        <button
-          onClick={onShare}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-800 hover:bg-gray-900 text-gray-300 text-sm font-medium transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="18" cy="5" r="3" />
-            <circle cx="6" cy="12" r="3" />
-            <circle cx="18" cy="19" r="3" />
-            <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />
-          </svg>
-          Share this report
-        </button>
+        <div className="grid grid-cols-3 gap-4">
+          <Stat label="DISCOVERED" value={summary.total_discovered} />
+          <Stat
+            label="UNREGISTERED"
+            value={summary.unregistered}
+            accent="warning"
+          />
+          <Stat
+            label="CRITICAL"
+            value={summary.critical_risk}
+            accent="danger"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-border-default pt-5">
+          <Button variant="primary" onClick={onDownload}>
+            Download PDF report
+          </Button>
+          <Button variant="secondary" onClick={onShare}>
+            Share this report
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: 'warning' | 'danger';
+}) {
+  return (
+    <div>
+      <div className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+        {label}
+      </div>
+      <div className="mt-1">
+        <NumberDisplay value={value} size="sm" accent={accent} />
       </div>
     </div>
   );

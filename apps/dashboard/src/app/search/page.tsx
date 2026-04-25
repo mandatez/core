@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { createServerClient } from '@/lib/supabase-server';
+import { LoadingSpinner, SectionMarker } from '@/components/ui';
 import { SearchClient } from './search-client';
 
 export const dynamic = 'force-dynamic';
@@ -66,27 +67,38 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     offset: Number.parseInt(toStringParam(params.offset) ?? '0', 10) || 0,
   };
 
-  // Prefetch agent + policy options server-side when we already know the
-  // owner. The client component gracefully re-fetches when the owner_id
-  // changes later in the session.
   const [agents, policies] = await Promise.all([
     fetchAgentOptions(initialFilters.owner_id || null),
     fetchPolicyOptions(initialFilters.owner_id || null),
   ]);
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Audit Trail Search</h1>
-        <p className="text-sm text-gray-400 max-w-3xl">
-          Search every signed <code className="text-gray-300">AgentEvent</code> for this
-          owner. Free-text matches resource, agent ID, policy, action type, outcome, and
-          metadata. All filters are reflected in the URL — paste the link into a ticket to
-          share an exact search with an auditor.
-        </p>
+    <div className="space-y-8">
+      <header className="space-y-4">
+        <SectionMarker number="01" label="SEARCH" />
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-text-primary">
+            Audit trail search
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
+            Search every signed{' '}
+            <code className="font-mono text-text-primary">AgentEvent</code>{' '}
+            for this owner. Free-text matches resource, agent ID, policy,
+            action type, outcome, and metadata. All filters are reflected in
+            the URL — paste the link to share an exact search with an
+            auditor.
+          </p>
+        </div>
       </header>
 
-      <Suspense fallback={<div className="text-gray-500">Loading filters…</div>}>
+      <Suspense
+        fallback={
+          <div className="flex items-center gap-3 text-sm text-text-muted">
+            <LoadingSpinner size="sm" />
+            Loading filters…
+          </div>
+        }
+      >
         <SearchClient
           initialFilters={initialFilters}
           initialAgents={agents}
