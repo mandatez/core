@@ -42,10 +42,11 @@
   --radius-xl: 12px;
 
   /* Typography — values resolve against next/font CSS variables
-     registered on <html> in app/layout.tsx. */
-  --font-display: var(--font-syne), "Inter Display", system-ui, sans-serif;
-  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), "JetBrains Mono", "Fira Code", monospace;
+     registered on <html> in app/layout.tsx. Geist handles both body and
+     display via weight; Geist Mono pairs with it for code. */
+  --font-display: var(--font-geist), "Geist", system-ui, sans-serif;
+  --font-sans: var(--font-geist), "Geist", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", "Fira Code", monospace;
 }
 
 :root {

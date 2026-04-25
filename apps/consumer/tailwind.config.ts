@@ -49,9 +49,9 @@ const config: Config = {
         xl: '12px',
       },
       fontFamily: {
-        display: ['var(--font-syne)', 'Inter Display', 'system-ui', 'sans-serif'],
-        sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-jetbrains)', 'JetBrains Mono', 'Fira Code', 'monospace'],
+        display: ['var(--font-geist)', 'Geist', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-geist)', 'Geist', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'Geist Mono', 'Fira Code', 'monospace'],
       },
     },
   },

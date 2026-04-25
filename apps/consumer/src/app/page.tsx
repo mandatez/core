@@ -15,7 +15,7 @@ const NOISE_SVG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>";
 
 const H2_CLASS =
-  'font-display text-[clamp(1.75rem,3.6vw,3rem)] font-extrabold leading-[1.05] tracking-[-0.02em] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]';
+  'font-display text-[clamp(1.625rem,2.8vw,2.5rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]';
 
 export default function LandingPage() {
   return (
@@ -33,6 +33,7 @@ export default function LandingPage() {
       <WorksWithSection />
       <PricingSection />
       <ReportTeaserSection />
+      <ClosingCtaSection />
       <FooterSection />
     </div>
   );
@@ -144,8 +145,8 @@ function Hero() {
         </div>
 
         <h1
-          className="mz-reveal mz-reveal-2 font-display font-extrabold tracking-[-0.035em] leading-[0.95] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
-          style={{ fontSize: 'clamp(2.5rem, 6.5vw, 5.5rem)' }}
+          className="mz-reveal mz-reveal-2 font-display font-bold tracking-[-0.03em] leading-[0.98] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
+          style={{ fontSize: 'clamp(2.25rem, 5.5vw, 4.5rem)' }}
         >
           <span className="inline-block">Every agent needs</span>
           <br />
@@ -178,7 +179,7 @@ function Hero() {
           </span>
         </h1>
 
-        <p className="mz-reveal mz-reveal-3 mt-10 max-w-2xl text-[16px] leading-[1.55] text-white/60 md:text-[18px]">
+        <p className="mz-reveal mz-reveal-3 mt-8 max-w-[38ch] md:max-w-2xl text-[15px] leading-[1.55] text-white/60 md:text-[17px]">
           The Vercel breach happened because an AI agent had no policy engine,
           no cryptographic identity, and no audit trail.{' '}
           <span className="text-white/90">MandateZ prevents this at the source.</span>
@@ -249,7 +250,7 @@ function SocialProof() {
           <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-white/35">
             / Production
           </span>
-          <p className="font-display max-w-3xl text-[17px] font-semibold leading-snug tracking-tight text-white/85 md:text-[19px]">
+          <p className="font-display max-w-3xl text-[15px] font-medium leading-snug tracking-tight text-white/85 md:text-[17px]">
             Trusted by teams shipping AI agents to production.
           </p>
           <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-white/35">
@@ -385,7 +386,7 @@ function HowItWorks() {
                 {String(i + 1).padStart(2, '0')}
               </div>
               <div className="mb-5 text-blue-400">{c.glyph}</div>
-              <h3 className="font-display text-[20px] font-bold tracking-tight md:text-[22px]">
+              <h3 className="font-display text-[18px] font-medium tracking-tight">
                 {c.title}
               </h3>
               <p className="mt-2 text-[14px] leading-relaxed text-white/55">
@@ -462,14 +463,14 @@ function TrustScoreSection() {
 
 function TrustCard() {
   return (
-    <div className="relative">
+    <div className="relative w-full max-w-full overflow-hidden">
       <div
         aria-hidden
         className="absolute -inset-8 -z-10 rounded-full opacity-60 blur-[80px]"
         style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.25) 0%, rgba(37,99,235,0.12) 60%, transparent 80%)' }}
       />
 
-      <div className="relative border border-white/[0.08] bg-[#0c0c0c] p-7 md:p-9">
+      <div className="relative border border-white/[0.08] bg-[#0c0c0c] p-6 md:p-9">
         <span aria-hidden className="absolute left-0 top-0 h-3 w-3 border-l border-t border-emerald-400/70" />
         <span aria-hidden className="absolute right-0 top-0 h-3 w-3 border-r border-t border-emerald-400/70" />
         <span aria-hidden className="absolute bottom-0 left-0 h-3 w-3 border-b border-l border-emerald-400/70" />
@@ -517,7 +518,7 @@ function Stat({ kicker, value, tone }: { kicker: string; value: string; tone?: '
         {kicker}
       </div>
       <div
-        className={`font-display mt-1.5 text-[20px] font-bold tracking-tight ${tone === 'emerald' ? 'text-emerald-300' : 'text-white'}`}
+        className={`font-display mt-1.5 text-[17px] font-semibold tracking-tight ${tone === 'emerald' ? 'text-emerald-300' : 'text-white'}`}
       >
         {value}
       </div>
@@ -581,7 +582,7 @@ function ComplianceSection() {
                   <path d="M5 12h14M13 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <h3 className="font-display mt-4 text-[20px] font-bold tracking-tight md:text-[22px]">
+              <h3 className="font-display mt-4 text-[18px] font-medium tracking-tight">
                 {p.title}
               </h3>
               <p className="mt-2 text-[14px] leading-relaxed text-white/55">
@@ -734,12 +735,17 @@ function PricingSection() {
               <Tag variant="default" className="self-start">
                 {t.blurb}
               </Tag>
-              <h3 className="font-display mt-3 text-[22px] font-bold tracking-tight">
+              <h3 className="font-display mt-3 text-[18px] font-medium tracking-tight">
                 {t.name}
               </h3>
 
               <div className="mt-5">
-                <NumberDisplay value={t.price} suffix={t.cadence} size="sm" />
+                <NumberDisplay
+                  value={t.price}
+                  suffix={t.cadence}
+                  size="sm"
+                  className="[&>span:first-child]:text-[2.5rem]"
+                />
               </div>
 
               <ul className="mt-7 space-y-2.5">
@@ -782,7 +788,7 @@ function PricingSection() {
         >
           <div>
             <Tag variant="success">One-time</Tag>
-            <h4 className="font-display mt-3 text-[22px] font-bold tracking-tight md:text-[24px]">
+            <h4 className="font-display mt-3 text-[18px] font-medium tracking-tight md:text-[20px]">
               Compliance Report <span className="text-white/50">·</span> $500
             </h4>
             <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-white/60">
@@ -908,6 +914,37 @@ function ReportTeaserSection() {
 }
 
 /* =======================================================================
+   SECTION 8.75 — CLOSING CTA
+   ======================================================================= */
+
+function ClosingCtaSection() {
+  return (
+    <Section
+      tight
+      className="relative border-t border-white/[0.05] bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.08),transparent_70%)]"
+    >
+      <div className="mx-auto max-w-3xl px-6 text-center md:px-10">
+        <SectionMarker number="09" label="START" className="justify-center" />
+        <h2 className="font-display mt-4 text-[clamp(1.5rem,2.4vw,2rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-white">
+          Every agent needs a mandate.
+        </h2>
+        <p className="mt-4 text-[15px] leading-relaxed text-white/60 md:text-[16px]">
+          Get a free shadow scan. See every agent in your stack in 60 seconds.
+        </p>
+        <div className="mt-8 flex justify-center">
+          <Button asChild variant="primary" size="lg">
+            <Link href="/login">
+              Get a free shadow scan
+              <span aria-hidden>→</span>
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* =======================================================================
    SECTION 9 — FOOTER
    ======================================================================= */
 
@@ -917,10 +954,10 @@ function FooterSection() {
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
         <div className="grid gap-8 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
-            <div className="font-display text-[28px] font-extrabold tracking-[-0.03em]">
+            <div className="font-display text-[24px] font-bold tracking-[-0.025em]">
               Mandate<span className="text-blue-500">Z</span>
             </div>
-            <p className="font-display mt-3 text-[17px] font-semibold tracking-tight text-white/80">
+            <p className="font-display mt-3 text-[15px] font-medium tracking-tight text-white/80">
               Every agent needs a mandate.
             </p>
           </div>

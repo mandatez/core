@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { Syne, JetBrains_Mono, Inter } from 'next/font/google';
 import { REPORT_2026 } from '@/data/governance-report-2026';
 import {
   ReportPrintButton,
@@ -9,23 +8,9 @@ import {
 } from '@/components/report-print-controls';
 import { Button } from '@/components/ui';
 
-const syne = Syne({
-  subsets: ['latin'],
-  weight: ['500', '600', '700', '800'],
-  display: 'swap',
-});
-
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  display: 'swap',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  display: 'swap',
-});
+const syne = { className: 'font-display' };
+const mono = { className: 'font-mono' };
+const inter = { className: 'font-sans' };
 
 const OG_IMAGE =
   'https://core-dashboard-black.vercel.app/api/trust-card/ag_ctx_ai_prod';
@@ -85,7 +70,7 @@ export default function ReportPage() {
           </div>
 
           <h1
-            className={`${syne.className} mt-10 font-extrabold tracking-[-0.03em] leading-[0.95]`}
+            className={`${syne.className} mt-10 font-bold tracking-[-0.03em] leading-[0.95]`}
             style={{ fontSize: 'clamp(2.75rem, 7vw, 5.25rem)' }}
           >
             {REPORT_2026.title}
@@ -162,7 +147,7 @@ export default function ReportPage() {
             / Next Step
           </div>
           <h3
-            className={`${syne.className} mt-4 text-[32px] font-extrabold tracking-[-0.02em] md:text-[44px]`}
+            className={`${syne.className} mt-4 text-[32px] font-bold tracking-[-0.02em] md:text-[44px]`}
           >
             Govern your agents today.
           </h3>
@@ -256,7 +241,7 @@ function Section({
         </span>
       </div>
       <h2
-        className={`${syne.className} mt-5 max-w-3xl text-[32px] font-extrabold leading-[1.05] tracking-[-0.02em] md:text-[44px]`}
+        className={`${syne.className} mt-5 max-w-3xl text-[32px] font-bold leading-[1.05] tracking-[-0.02em] md:text-[44px]`}
       >
         {title}
       </h2>
@@ -284,7 +269,7 @@ function StatCard({
         {String(index).padStart(2, '0')}
       </div>
       <div
-        className={`${syne.className} font-extrabold tracking-[-0.03em] text-white`}
+        className={`${syne.className} font-bold tracking-[-0.03em] text-white`}
         style={{ fontSize: 'clamp(2.25rem, 5vw, 3.5rem)', lineHeight: '1' }}
       >
         {stat}
@@ -311,7 +296,7 @@ function Finding({
   return (
     <div className="finding grid gap-4 border-l border-white/[0.08] pl-6 md:grid-cols-[auto_1fr] md:gap-8 md:border-none md:pl-0">
       <div
-        className={`${syne.className} text-blue-400 font-extrabold tracking-[-0.03em] md:text-right`}
+        className={`${syne.className} text-blue-400 font-bold tracking-[-0.03em] md:text-right`}
         style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', lineHeight: '1' }}
       >
         {number}

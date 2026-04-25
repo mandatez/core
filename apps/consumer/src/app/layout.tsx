@@ -1,27 +1,21 @@
 import type { Metadata } from 'next';
-import { Syne, Inter, JetBrains_Mono } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 import './globals.css';
 
-const syne = Syne({
-  subsets: ['latin'],
-  weight: ['500', '600', '700', '800'],
-  variable: '--font-syne',
-  display: 'swap',
-});
-
-const inter = Inter({
+const geist = Geist({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
-  variable: '--font-inter',
+  variable: '--font-geist',
   display: 'swap',
 });
 
-const jetbrains = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
-  variable: '--font-jetbrains',
+  weight: ['400', '500'],
+  variable: '--font-geist-mono',
   display: 'swap',
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -63,15 +57,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${inter.variable} ${jetbrains.variable}`}
+      className={`${geist.variable} ${geistMono.variable}`}
     >
       <body className="text-text-primary min-h-screen font-sans">
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/80 backdrop-blur-xl border-b border-white/[0.06] px-8 md:px-16 lg:px-24 py-4">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="text-xl font-black tracking-tight font-display">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-[#080808]/80 backdrop-blur-xl border-b border-white/[0.06] px-6 md:px-10 lg:px-16 py-4">
+          <div className="flex items-center gap-4 md:gap-8">
+            <Link href="/" className="text-xl font-bold tracking-tight font-display">
               Mandate<span className="text-accent-primary">Z</span>
             </Link>
-            <div className="flex gap-6 text-sm text-text-secondary">
+            <div className="hidden md:flex gap-6 text-sm text-text-secondary">
               <Link href="/" className="hover:text-text-primary transition-colors">
                 Home
               </Link>

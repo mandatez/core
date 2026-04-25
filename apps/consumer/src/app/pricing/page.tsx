@@ -61,8 +61,8 @@ export default function PricingPage() {
           <SectionMarker number="01" label="PRICING" />
 
           <h1
-            className="font-display mt-4 max-w-4xl font-extrabold tracking-[-0.025em] leading-[1.02] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
-            style={{ fontSize: 'clamp(2rem, 4.5vw, 3.75rem)' }}
+            className="font-display mt-4 max-w-4xl font-semibold tracking-[-0.025em] leading-[1.05] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
+            style={{ fontSize: 'clamp(1.875rem, 3.5vw, 3rem)' }}
           >
             Built for the scale of your mandate
             <span className="text-blue-500">.</span>
@@ -98,7 +98,7 @@ export default function PricingPage() {
                   {tier.blurb}
                 </Tag>
 
-                <h3 className="font-display mt-3 text-[22px] font-bold tracking-tight text-text-primary">
+                <h3 className="font-display mt-3 text-[18px] font-medium tracking-tight text-text-primary">
                   {tier.name}
                 </h3>
 
@@ -107,6 +107,7 @@ export default function PricingPage() {
                     value={tier.price}
                     suffix={tier.cadence}
                     size="sm"
+                    className="[&>span:first-child]:text-[2.5rem]"
                   />
                 </div>
 
@@ -161,7 +162,7 @@ export default function PricingPage() {
           >
             <div>
               <Tag variant="success">One-time</Tag>
-              <h2 className="font-display mt-3 text-[22px] font-bold tracking-tight text-text-primary md:text-[24px]">
+              <h2 className="font-display mt-3 text-[18px] font-medium tracking-tight text-text-primary md:text-[20px]">
                 Compliance Audit Report{' '}
                 <span className="text-text-muted">·</span> $500
               </h2>

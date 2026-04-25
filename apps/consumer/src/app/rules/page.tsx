@@ -117,8 +117,8 @@ export default function RulesPage() {
           <SectionMarker number="01" label="OWASP AGENTIC TOP 10" />
 
           <h1
-            className="font-display mt-4 max-w-4xl font-extrabold tracking-[-0.025em] leading-[1.02] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
-            style={{ fontSize: 'clamp(2rem, 4.5vw, 3.75rem)' }}
+            className="font-display mt-4 max-w-4xl font-semibold tracking-[-0.025em] leading-[1.05] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
+            style={{ fontSize: 'clamp(1.875rem, 3.5vw, 3rem)' }}
           >
             Every AI agent risk, mapped to a MandateZ control
             <span className="text-blue-500">.</span>
@@ -142,7 +142,7 @@ export default function RulesPage() {
                     <Tag variant="info">{risk.code}</Tag>
                     <span className="h-px flex-1 bg-border-subtle" />
                   </div>
-                  <CardTitle className="font-display text-[19px] md:text-[21px]">
+                  <CardTitle className="font-display text-[17px] font-medium md:text-[18px]">
                     {risk.name}
                   </CardTitle>
                   <CardDescription className="text-[14.5px] leading-relaxed">
@@ -173,7 +173,7 @@ export default function RulesPage() {
           >
             <div>
               <Tag variant="info">Compliance</Tag>
-              <h2 className="font-display mt-3 text-[22px] font-bold tracking-tight text-text-primary md:text-[24px]">
+              <h2 className="font-display mt-3 text-[18px] font-medium tracking-tight text-text-primary md:text-[20px]">
                 Generate an OWASP Agentic Top 10 compliance report
               </h2>
               <p className="mt-2 max-w-xl text-[14px] leading-relaxed text-text-secondary">
