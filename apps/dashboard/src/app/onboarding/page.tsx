@@ -2,6 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import {
+  Button,
+  Card,
+  SectionMarker,
+  Tag,
+} from '@/components/ui';
 
 type Framework =
   | 'LangChain'
@@ -56,10 +62,10 @@ const STEP_LABELS = [
   'Done',
 ] as const;
 
-const EFFECT_STYLE: Record<Effect, string> = {
-  allow: 'text-green-400',
-  block: 'text-red-400',
-  flag: 'text-amber-400',
+const EFFECT_VARIANT: Record<Effect, 'success' | 'danger' | 'warning'> = {
+  allow: 'success',
+  block: 'danger',
+  flag: 'warning',
 };
 
 const EFFECT_LABEL: Record<Effect, string> = {
@@ -74,7 +80,6 @@ export default function OnboardingPage() {
   const [templates, setTemplates] = useState<PolicyTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('hipaa_healthcare');
 
-  // Step 2 form state
   const [agentName, setAgentName] = useState('');
   const [framework, setFramework] = useState<Framework>('LangChain');
   const [environment, setEnvironment] = useState<Environment>('production');
@@ -82,7 +87,6 @@ export default function OnboardingPage() {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [agent, setAgent] = useState<AgentResponse | null>(null);
 
-  // Step 3 state
   const [savingPolicy, setSavingPolicy] = useState(false);
   const [policyError, setPolicyError] = useState<string | null>(null);
   const [policySaved, setPolicySaved] = useState(false);
@@ -167,10 +171,23 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl space-y-10">
+      <header className="space-y-4">
+        <SectionMarker number="00" label="ONBOARDING" />
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-text-primary">
+            Set up your first governed agent
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+            Five minutes from here to a cryptographically signed agent shipping
+            audit-ready events into your dashboard.
+          </p>
+        </div>
+      </header>
+
       <Stepper step={step} />
 
-      <div className="mt-10">
+      <div>
         {step === 0 && (
           <WelcomeStep
             ownerId={ownerId}
@@ -230,32 +247,34 @@ function Stepper({ step }: { step: number }) {
         const done = i < step;
         const active = i === step;
         return (
-          <div key={label} className="flex items-center gap-2 flex-1 min-w-0">
+          <div key={label} className="flex flex-1 min-w-0 items-center gap-2">
             <div
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-xs font-mono uppercase tracking-wider truncate transition-colors ${
+              className={`flex items-center gap-2 truncate font-mono text-xs uppercase tracking-widest transition-colors ${
                 active
-                  ? 'bg-blue-600/20 text-blue-300 border border-blue-600/40'
+                  ? 'text-accent-primary'
                   : done
-                    ? 'text-emerald-300'
-                    : 'text-gray-500'
+                    ? 'text-accent-success'
+                    : 'text-text-muted'
               }`}
             >
               <span
-                className={`h-4 w-4 shrink-0 rounded-full flex items-center justify-center text-[10px] ${
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-mono text-[10px] ${
                   done
-                    ? 'bg-emerald-500 text-black'
+                    ? 'bg-accent-success text-white'
                     : active
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-800 text-gray-500'
+                      ? 'bg-accent-primary text-white'
+                      : 'border border-border-default bg-bg-overlay text-text-muted'
                 }`}
               >
-                {done ? '✓' : i + 1}
+                {done ? '✓' : String(i + 1).padStart(2, '0')}
               </span>
               <span className="truncate">{label}</span>
             </div>
             {i < STEP_LABELS.length - 1 && (
               <span
-                className={`h-px flex-1 ${done ? 'bg-emerald-700' : 'bg-gray-800'}`}
+                className={`h-px flex-1 ${
+                  done ? 'bg-accent-success' : 'bg-border-default'
+                }`}
               />
             )}
           </div>
@@ -278,7 +297,8 @@ function WelcomeStep({
 }) {
   return (
     <StepShell
-      label="Step 1 · Welcome"
+      number="01"
+      label="WELCOME"
       title="Let's set up your first governed agent."
       description="Five minutes from here to a cryptographically signed agent shipping audit-ready events into your dashboard."
     >
@@ -300,9 +320,9 @@ function WelcomeStep({
         />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-2">
         <Label>Owner ID</Label>
-        <p className="text-xs text-gray-500 mt-1 mb-2">
+        <p className="text-xs leading-relaxed text-text-muted">
           Scopes every agent, policy, and event to you. Use anything stable —
           your Supabase auth UUID works best once you wire sign-in.
         </p>
@@ -310,14 +330,19 @@ function WelcomeStep({
           value={ownerId}
           onChange={(e) => onOwnerIdChange(e.target.value)}
           placeholder="owner_acme_prod"
-          className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+          className="w-full rounded-md border border-border-default bg-bg-overlay px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none transition-colors"
         />
       </div>
 
       <StepFooter>
-        <PrimaryButton onClick={onNext} disabled={!ownerId.trim()}>
-          Continue →
-        </PrimaryButton>
+        <Button
+          variant="primary"
+          onClick={onNext}
+          disabled={!ownerId.trim()}
+          className="ml-auto"
+        >
+          Continue
+        </Button>
       </StepFooter>
     </StepShell>
   );
@@ -333,11 +358,13 @@ function FeatureCard({
   body: string;
 }) {
   return (
-    <div className="rounded-md border border-gray-800 bg-gray-950/50 p-4">
-      <div className="text-blue-400 mb-3">{icon}</div>
-      <div className="text-sm font-medium text-gray-100">{title}</div>
-      <div className="text-xs text-gray-500 mt-1 leading-relaxed">{body}</div>
-    </div>
+    <Card variant="default" className="p-4">
+      <div className="mb-3 text-accent-primary">{icon}</div>
+      <div className="text-sm font-medium text-text-primary">{title}</div>
+      <div className="mt-1 text-xs leading-relaxed text-text-secondary">
+        {body}
+      </div>
+    </Card>
   );
 }
 
@@ -376,7 +403,8 @@ function RegisterStep({
 }) {
   return (
     <StepShell
-      label="Step 2 · Register Your First Agent"
+      number="02"
+      label="REGISTER AGENT"
       title="Generate a cryptographic identity."
       description="We generate an Ed25519 keypair on the server and return the private key to you once. We never store it."
     >
@@ -387,7 +415,7 @@ function RegisterStep({
               value={ownerId}
               onChange={(e) => onOwnerIdChange(e.target.value)}
               placeholder="owner_acme_prod"
-              className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm font-mono text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-md border border-border-default bg-bg-overlay px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none transition-colors"
             />
           </Field>
           <Field label="Agent name">
@@ -395,15 +423,17 @@ function RegisterStep({
               value={name}
               onChange={(e) => onNameChange(e.target.value)}
               placeholder="customer-support-agent"
-              className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-md border border-border-default bg-bg-overlay px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none transition-colors"
             />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Framework">
               <select
                 value={framework}
-                onChange={(e) => onFrameworkChange(e.target.value as Framework)}
-                className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 focus:border-blue-500 focus:outline-none"
+                onChange={(e) =>
+                  onFrameworkChange(e.target.value as Framework)
+                }
+                className="w-full rounded-md border border-border-default bg-bg-overlay px-3 py-2 text-sm text-text-primary focus:border-border-focus focus:outline-none transition-colors"
               >
                 {FRAMEWORKS.map((f) => (
                   <option key={f} value={f}>
@@ -418,7 +448,7 @@ function RegisterStep({
                 onChange={(e) =>
                   onEnvironmentChange(e.target.value as Environment)
                 }
-                className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-md border border-border-default bg-bg-overlay px-3 py-2 text-sm text-text-primary focus:border-border-focus focus:outline-none transition-colors"
               >
                 <option value="production">Production</option>
                 <option value="staging">Staging</option>
@@ -427,44 +457,50 @@ function RegisterStep({
             </Field>
           </div>
 
-          {error && (
-            <div className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-              {error}
-            </div>
-          )}
+          {error && <ErrorBanner>{error}</ErrorBanner>}
 
           <StepFooter>
-            <SecondaryButton onClick={onBack}>← Back</SecondaryButton>
-            <PrimaryButton
+            <Button variant="secondary" onClick={onBack}>
+              Back
+            </Button>
+            <Button
+              variant="primary"
               onClick={onRegister}
-              disabled={submitting || !name.trim() || !ownerId.trim()}
+              loading={submitting}
+              disabled={!name.trim() || !ownerId.trim()}
+              className="ml-auto"
             >
-              {submitting ? 'Generating keypair…' : 'Generate identity'}
-            </PrimaryButton>
+              {submitting ? 'Generating keypair' : 'Generate identity'}
+            </Button>
           </StepFooter>
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="rounded-md border border-amber-900/60 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
-            <div className="font-semibold text-amber-100">
-              Save your private key now — it will not be shown again.
+          <Card
+            variant="default"
+            className="border-l-2 border-accent-warning p-4"
+          >
+            <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-warning">
+              Save your private key now — it will not be shown again
             </div>
-            <div className="mt-1 text-amber-200/80 text-xs leading-relaxed">
+            <div className="mt-2 text-xs leading-relaxed text-text-secondary">
               Store it in your secret manager (1Password, Vault, AWS Secrets
               Manager). MandateZ does not retain a copy. If you lose it, the
               agent cannot sign events and must be re-registered.
             </div>
-          </div>
+          </Card>
 
           <ValueRow label="Agent ID" value={agent.agent_id} mono />
           <ValueRow label="Public key" value={agent.public_key} mono />
           <ValueRow label="Private key" value={agent.private_key} mono secret />
 
           <StepFooter>
-            <SecondaryButton onClick={onBack}>← Back</SecondaryButton>
-            <PrimaryButton onClick={onNext}>
-              I&rsquo;ve saved my key →
-            </PrimaryButton>
+            <Button variant="secondary" onClick={onBack}>
+              Back
+            </Button>
+            <Button variant="primary" onClick={onNext} className="ml-auto">
+              I&rsquo;ve saved my key
+            </Button>
           </StepFooter>
         </div>
       )}
@@ -497,7 +533,8 @@ function PolicyStep({
 
   return (
     <StepShell
-      label="Step 3 · Pick a Policy Template"
+      number="03"
+      label="CONFIGURE POLICY"
       title="Choose a starting template."
       description="Templates are curated policy configurations for common agent use cases. Pick the closest match — you can edit the rules afterwards."
     >
@@ -507,28 +544,28 @@ function PolicyStep({
             key={template.key}
             type="button"
             onClick={() => onSelect(template.key)}
-            className={`text-left rounded-md border p-4 transition-colors ${
+            className={`rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base ${
               selected === template.key
-                ? 'border-blue-500 bg-blue-500/5'
-                : 'border-gray-800 bg-gray-950/40 hover:border-gray-700'
+                ? 'border-accent-primary bg-accent-primary/10'
+                : 'border-border-default bg-bg-overlay hover:border-border-strong'
             }`}
           >
             <div className="flex items-start justify-between gap-2">
-              <span className="text-sm font-medium text-gray-100 leading-snug">
+              <span className="text-sm font-medium leading-snug text-text-primary">
                 {template.name}
               </span>
               <span
                 className={`h-4 w-4 shrink-0 rounded-full border ${
                   selected === template.key
-                    ? 'border-blue-400 bg-blue-500'
-                    : 'border-gray-700'
+                    ? 'border-accent-primary bg-accent-primary'
+                    : 'border-border-strong'
                 }`}
               />
             </div>
-            <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+            <p className="mt-2 text-xs leading-relaxed text-text-secondary">
               {template.description}
             </p>
-            <div className="mt-3 text-[10px] font-mono uppercase tracking-wider text-gray-600">
+            <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-text-muted">
               {template.rule_count} rules · {template.id}
             </div>
           </button>
@@ -536,46 +573,57 @@ function PolicyStep({
       </div>
 
       {activeTemplate && (
-        <div className="mt-6 rounded-md border border-gray-800 bg-black/40 p-4">
-          <div className="text-xs font-mono uppercase tracking-wider text-gray-500 mb-3">
+        <Card variant="default" className="mt-6 p-4">
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
             Rule preview — {activeTemplate.name}
           </div>
-          <div className="space-y-1 font-mono text-xs">
+          <div className="space-y-1.5 font-mono text-xs">
             {activeTemplate.rules.map((rule, i) => (
-              <div key={i} className="flex gap-3 items-start">
-                <span
-                  className={`w-14 shrink-0 font-semibold ${EFFECT_STYLE[rule.effect]}`}
-                >
+              <div key={i} className="flex items-start gap-3">
+                <Tag variant={EFFECT_VARIANT[rule.effect]} className="w-16 justify-center">
                   {EFFECT_LABEL[rule.effect]}
-                </span>
-                <span className="text-gray-500 w-32 shrink-0 truncate">
+                </Tag>
+                <span className="w-32 shrink-0 truncate text-text-muted">
                   {rule.action_types.join(',')}
                 </span>
-                <span className="text-gray-300 truncate">
+                <span className="truncate text-text-secondary">
                   {rule.resource_pattern}
                 </span>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
       {error && (
-        <div className="mt-4 rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
-          {error}
+        <div className="mt-4">
+          <ErrorBanner>{error}</ErrorBanner>
         </div>
       )}
       {saved && (
-        <div className="mt-4 rounded-md border border-emerald-900 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-300">
-          Policy saved.
-        </div>
+        <Card
+          variant="default"
+          className="mt-4 border-l-2 border-accent-success p-3"
+        >
+          <div className="font-mono text-xs uppercase tracking-widest text-accent-success">
+            ✓ Policy saved
+          </div>
+        </Card>
       )}
 
       <StepFooter>
-        <SecondaryButton onClick={onBack}>← Back</SecondaryButton>
-        <PrimaryButton onClick={onSave} disabled={saving || !activeTemplate}>
-          {saving ? 'Saving…' : 'Save policy'}
-        </PrimaryButton>
+        <Button variant="secondary" onClick={onBack}>
+          Back
+        </Button>
+        <Button
+          variant="primary"
+          onClick={onSave}
+          loading={saving}
+          disabled={!activeTemplate}
+          className="ml-auto"
+        >
+          {saving ? 'Saving' : 'Save policy'}
+        </Button>
       </StepFooter>
     </StepShell>
   );
@@ -592,14 +640,12 @@ function InstallStep({
   onBack: () => void;
   onNext: () => void;
 }) {
-  const snippet = useMemo(
-    () => buildInstallSnippet(agent),
-    [agent],
-  );
+  const snippet = useMemo(() => buildInstallSnippet(agent), [agent]);
 
   return (
     <StepShell
-      label="Step 4 · Install the SDK"
+      number="04"
+      label="INSTALL SDK"
       title={`Ship the ${agent.framework} integration.`}
       description="Drop this into your agent's entry point. Every call it makes after this line is signed, policy-checked, and audited."
     >
@@ -607,29 +653,33 @@ function InstallStep({
         <CommandBlock title="Install" body={snippet.install} />
         <CommandBlock title="Wire it up" body={snippet.code} />
         {snippet.note && (
-          <p className="text-xs text-gray-500 leading-relaxed">
+          <p className="text-xs leading-relaxed text-text-muted">
             {snippet.note}
           </p>
         )}
 
-        <div className="border-t border-gray-800 pt-4 flex items-center justify-between text-sm">
+        <div className="flex items-center justify-between border-t border-border-default pt-4 text-sm">
           <a
             href="https://mandatez.mintlify.app/quickstart"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 transition-colors"
+            className="text-accent-primary underline-offset-4 hover:underline"
           >
             Full quickstart →
           </a>
-          <span className="text-xs text-gray-500 font-mono">
+          <span className="font-mono text-xs text-text-muted">
             {agent.agent_id}
           </span>
         </div>
       </div>
 
       <StepFooter>
-        <SecondaryButton onClick={onBack}>← Back</SecondaryButton>
-        <PrimaryButton onClick={onNext}>Finish →</PrimaryButton>
+        <Button variant="secondary" onClick={onBack}>
+          Back
+        </Button>
+        <Button variant="primary" onClick={onNext} className="ml-auto">
+          Finish
+        </Button>
       </StepFooter>
     </StepShell>
   );
@@ -640,7 +690,8 @@ function InstallStep({
 function DoneStep({ agent }: { agent: AgentResponse }) {
   return (
     <StepShell
-      label="Step 5 · Done"
+      number="05"
+      label="DONE"
       title="Your agent is ready."
       description="You now have a cryptographically identified, policy-governed agent logging signed events into your dashboard."
     >
@@ -650,26 +701,23 @@ function DoneStep({ agent }: { agent: AgentResponse }) {
         <ResultCard label="Status" value="Active · ready to track events" />
       </div>
 
-      <div className="mt-6 rounded-md border border-gray-800 bg-gray-950/40 p-4">
-        <div className="text-xs font-mono uppercase tracking-wider text-gray-500">
+      <Card variant="default" className="mt-6 p-4">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
           Next steps
         </div>
-        <ol className="mt-3 space-y-2 text-sm text-gray-300 list-decimal list-inside">
+        <ol className="mt-3 list-inside list-decimal space-y-2 text-sm text-text-secondary">
           <li>Track your first event from your agent code.</li>
           <li>Watch the Events tab update live as your agent runs.</li>
           <li>
             Generate a compliance report once you have 50+ signed events.
           </li>
         </ol>
-      </div>
+      </Card>
 
       <StepFooter>
-        <Link
-          href="/"
-          className="ml-auto inline-flex items-center gap-2 rounded-md bg-blue-600 hover:bg-blue-500 px-5 py-3 text-sm font-medium text-white transition-colors"
-        >
-          Go to Dashboard →
-        </Link>
+        <Button asChild variant="success" className="ml-auto">
+          <Link href="/">View dashboard</Link>
+        </Button>
       </StepFooter>
     </StepShell>
   );
@@ -731,7 +779,7 @@ await governed.invoke({ task: '…' });`,
       note:
         agent.framework === 'CrewAI'
           ? 'For CrewAI crews, wrap each agent step so every task is signed independently.'
-          : 'For AutoGen, wrap each agent\'s run() call so multi-agent exchanges are fully auditable.',
+          : "For AutoGen, wrap each agent's run() call so multi-agent exchanges are fully auditable.",
     };
   }
 
@@ -774,80 +822,43 @@ await client.track({
 /* ============================ UI primitives ============================ */
 
 function StepShell({
+  number,
   label,
   title,
   description,
   children,
 }: {
+  number: string;
   label: string;
   title: string;
   description: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-950/30 p-6 md:p-8">
-      <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-blue-400">
-        {label}
-      </div>
-      <h2 className="mt-3 text-2xl font-semibold text-gray-50">{title}</h2>
-      <p className="mt-2 text-sm text-gray-400 max-w-2xl leading-relaxed">
+    <Card variant="elevated" className="p-6 md:p-8">
+      <SectionMarker number={number} label={label} />
+      <h2 className="mt-4 text-2xl font-semibold tracking-tight text-text-primary">
+        {title}
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
         {description}
       </p>
       <div className="mt-6">{children}</div>
-    </div>
+    </Card>
   );
 }
 
 function StepFooter({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-8 flex items-center gap-3 border-t border-gray-800 pt-5">
+    <div className="mt-8 flex items-center gap-3 border-t border-border-default pt-5">
       {children}
     </div>
   );
 }
 
-function PrimaryButton({
-  onClick,
-  disabled,
-  children,
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="ml-auto rounded-md bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed px-5 py-2.5 text-sm font-medium text-white transition-colors"
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({
-  onClick,
-  children,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-md border border-gray-800 hover:border-gray-600 px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors"
-    >
-      {children}
-    </button>
-  );
-}
-
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-xs font-medium uppercase tracking-wider text-gray-500">
+    <label className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
       {children}
     </label>
   );
@@ -861,10 +872,18 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div className="space-y-2">
       <Label>{label}</Label>
-      <div className="mt-2">{children}</div>
+      <div>{children}</div>
     </div>
+  );
+}
+
+function ErrorBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <Card variant="danger-tinted" className="p-3">
+      <div className="font-mono text-xs text-accent-danger">{children}</div>
+    </Card>
   );
 }
 
@@ -893,39 +912,42 @@ function ValueRow({
   };
 
   return (
-    <div className="rounded-md border border-gray-800 bg-black/30 px-4 py-3">
+    <Card variant="default" className="px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-gray-500">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
           {label}
           {secret && (
-            <span className="ml-2 text-amber-400">· keep private</span>
+            <span className="ml-2 text-accent-warning">· keep private</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           {secret && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setRevealed((v) => !v)}
-              className="text-[11px] uppercase tracking-wider text-gray-500 hover:text-gray-200 transition-colors"
             >
               {revealed ? 'Hide' : 'Reveal'}
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={copy}
-            className="text-[11px] uppercase tracking-wider text-gray-500 hover:text-blue-300 transition-colors"
+            leftIcon={<IconCopy />}
           >
-            {copied ? 'Copied ✓' : 'Copy'}
-          </button>
+            {copied ? 'Copied' : 'Copy'}
+          </Button>
         </div>
       </div>
       <div
-        className={`mt-2 text-sm text-gray-200 break-all ${mono ? 'font-mono' : ''}`}
+        className={`mt-2 break-all text-sm text-text-primary ${
+          mono ? 'font-mono' : ''
+        }`}
       >
         {revealed ? value : '•'.repeat(Math.min(48, value.length))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -941,22 +963,24 @@ function CommandBlock({ title, body }: { title: string; body: string }) {
     }
   };
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-mono uppercase tracking-[0.22em] text-gray-500">
+    <Card variant="default" className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border-default px-4 py-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
           {title}
         </span>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={copy}
-          className="text-[11px] uppercase tracking-wider text-gray-500 hover:text-blue-300 transition-colors"
+          leftIcon={<IconCopy />}
         >
-          {copied ? 'Copied ✓' : 'Copy'}
-        </button>
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
       </div>
-      <pre className="rounded-md border border-gray-800 bg-black/40 p-4 text-xs text-gray-200 overflow-x-auto font-mono leading-relaxed">
+      <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-text-primary">
         {body}
       </pre>
-    </div>
+    </Card>
   );
 }
 
@@ -970,16 +994,18 @@ function ResultCard({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-md border border-gray-800 bg-gray-950/40 p-4">
-      <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-gray-500">
+    <Card variant="default" className="p-4">
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
         {label}
       </div>
       <div
-        className={`mt-2 text-sm text-gray-100 break-all ${mono ? 'font-mono' : ''}`}
+        className={`mt-2 break-all text-sm text-text-primary ${
+          mono ? 'font-mono' : ''
+        }`}
       >
         {value}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -987,7 +1013,17 @@ function ResultCard({
 
 function IconKey() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <circle cx="8" cy="15" r="4" />
       <path d="M10.85 12.15L21 2" />
       <path d="M17.5 5.5L21 2l0 4" />
@@ -998,7 +1034,17 @@ function IconKey() {
 
 function IconShield() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
       <path d="M9 12l2 2 4-4" />
     </svg>
@@ -1007,9 +1053,38 @@ function IconShield() {
 
 function IconFeed() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M7 9h10M7 13h6M7 17h8" />
+    </svg>
+  );
+}
+
+function IconCopy() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
     </svg>
   );
 }

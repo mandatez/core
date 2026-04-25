@@ -1,6 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import {
+  Button,
+  Card,
+  EmptyState,
+  Tag,
+} from '@/components/ui';
 
 type ReportType = 'owasp' | 'eu-ai-act' | 'hipaa';
 type Frequency = 'monthly' | 'quarterly';
@@ -45,6 +51,7 @@ export default function SchedulesClient() {
   const [reportTypes, setReportTypes] = useState<ReportType[]>(['owasp']);
   const [frequency, setFrequency] = useState<Frequency>('quarterly');
   const [schedule, setSchedule] = useState<ReportSchedule | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<Status>({ kind: 'idle' });
   const [generatingNow, setGeneratingNow] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -56,16 +63,19 @@ export default function SchedulesClient() {
         : null;
     if (stored) {
       setOwnerId(stored);
-      loadSchedule(stored);
+      void loadSchedule(stored);
+    } else {
+      setHasLoaded(true);
     }
   }, []);
 
   async function loadSchedule(id: string) {
     if (!id) return;
     try {
-      const res = await fetch(`/api/schedules?owner_id=${encodeURIComponent(id)}`, {
-        credentials: 'include',
-      });
+      const res = await fetch(
+        `/api/schedules?owner_id=${encodeURIComponent(id)}`,
+        { credentials: 'include' },
+      );
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load');
       const s = json.schedule as ReportSchedule | null;
@@ -80,6 +90,8 @@ export default function SchedulesClient() {
         kind: 'error',
         message: err instanceof Error ? err.message : 'Failed to load',
       });
+    } finally {
+      setHasLoaded(true);
     }
   }
 
@@ -89,7 +101,10 @@ export default function SchedulesClient() {
       return;
     }
     if (reportTypes.length === 0) {
-      setSaveStatus({ kind: 'error', message: 'Select at least one report type' });
+      setSaveStatus({
+        kind: 'error',
+        message: 'Select at least one report type',
+      });
       return;
     }
 
@@ -166,7 +181,9 @@ export default function SchedulesClient() {
           }),
         });
         if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'Request failed' }));
+          const err = await res
+            .json()
+            .catch(() => ({ error: 'Request failed' }));
           throw new Error(err.error ?? `HTTP ${res.status}`);
         }
         const blob = await res.blob();
@@ -180,7 +197,9 @@ export default function SchedulesClient() {
         URL.revokeObjectURL(url);
       }
     } catch (err) {
-      setGenerateError(err instanceof Error ? err.message : 'Generate failed');
+      setGenerateError(
+        err instanceof Error ? err.message : 'Generate failed',
+      );
     } finally {
       setGeneratingNow(false);
     }
@@ -194,174 +213,230 @@ export default function SchedulesClient() {
 
   return (
     <div className="space-y-8">
+      {/* Existing schedule banner OR empty state */}
       {schedule ? (
-        <div className="border border-emerald-800/60 rounded-lg bg-emerald-950/20 p-5">
-          <div className="text-[10px] uppercase tracking-[0.25em] text-emerald-400 font-mono">
-            Active schedule
-          </div>
-          <div className="mt-2 text-sm text-gray-200">
-            Next report:{' '}
-            <span className="font-medium text-white">
-              {formatDate(schedule.next_send_at)}
-            </span>{' '}
-            →{' '}
-            <span className="font-mono text-emerald-300">{schedule.email}</span>
-          </div>
-          <div className="mt-1 text-sm text-gray-400">
-            Includes:{' '}
-            {schedule.report_types.map((t) => REPORT_LABELS[t]).join(', ')} ·{' '}
-            <span className="capitalize">{schedule.frequency}</span>
-          </div>
-          {schedule.last_sent_at && (
-            <div className="mt-1 text-xs text-gray-500">
-              Last sent: {formatDate(schedule.last_sent_at)}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={cancelSchedule}
-            className="mt-3 text-xs text-red-400 hover:text-red-300 underline"
-          >
-            Cancel schedule
-          </button>
-        </div>
+        <ActiveScheduleCard
+          schedule={schedule}
+          onCancel={cancelSchedule}
+          onTriggerNow={generateNow}
+          triggering={generatingNow}
+        />
+      ) : hasLoaded ? (
+        <EmptyState
+          icon={<IconCalendar />}
+          title="No active schedule"
+          description="Configure delivery below — your first quarterly compliance bundle will arrive automatically."
+        />
       ) : null}
 
-      {/* Owner ID */}
-      <SectionCard
-        label="A · Owner"
-        title="Your MandateZ owner ID"
-        description="Used to scope the schedule and fetch agent events."
-      >
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            value={ownerId}
-            onChange={(e) => setOwnerId(e.target.value)}
-            placeholder="owner_123"
-            className="flex-1 rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono"
-          />
-          <button
-            onClick={() => loadSchedule(ownerId.trim())}
-            disabled={!ownerId.trim()}
-            className="px-4 py-2 text-sm border border-gray-700 rounded-md text-gray-300 hover:border-gray-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      {/* Form card */}
+      <Card variant="elevated" className="p-6 md:p-8">
+        <div className="space-y-8">
+          {/* Owner */}
+          <FormSection
+            label="A · Owner"
+            title="Your MandateZ owner ID"
+            description="Used to scope the schedule and fetch agent events."
           >
-            Load schedule
-          </button>
-        </div>
-      </SectionCard>
-
-      {/* Email */}
-      <SectionCard
-        label="B · Destination"
-        title="Email address"
-        description="Where the quarterly PDF bundle will be delivered."
-      >
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="security@yourcompany.com"
-          className="w-full rounded-md border border-gray-800 bg-gray-900/50 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:border-blue-500 focus:outline-none font-mono"
-        />
-      </SectionCard>
-
-      {/* Report types */}
-      <SectionCard
-        label="C · Reports"
-        title="Which reports to include"
-        description="One bundle, one email — every selected framework in a single delivery."
-      >
-        <div className="grid gap-3 sm:grid-cols-3">
-          {ALL_TYPES.map((type) => {
-            const selected = reportTypes.includes(type);
-            return (
-              <button
-                key={type}
-                type="button"
-                onClick={() => toggleType(type)}
-                className={`border rounded-md p-4 text-left transition-colors ${
-                  selected
-                    ? 'border-blue-500 bg-blue-950/30'
-                    : 'border-gray-800 bg-gray-950/40 hover:border-gray-700'
-                }`}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={ownerId}
+                onChange={(e) => setOwnerId(e.target.value)}
+                placeholder="owner_123"
+                className="flex-1 rounded-md border border-border-default bg-bg-overlay px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none transition-colors"
+              />
+              <Button
+                variant="secondary"
+                onClick={() => loadSchedule(ownerId.trim())}
+                disabled={!ownerId.trim()}
               >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`h-3.5 w-3.5 rounded-sm border ${
+                Load schedule
+              </Button>
+            </div>
+          </FormSection>
+
+          {/* Email */}
+          <FormSection
+            label="B · Destination"
+            title="Email address"
+            description="Where the quarterly PDF bundle will be delivered."
+          >
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="security@yourcompany.com"
+              className="w-full rounded-md border border-border-default bg-bg-overlay px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none transition-colors"
+            />
+          </FormSection>
+
+          {/* Report types */}
+          <FormSection
+            label="C · Reports"
+            title="Which reports to include"
+            description="One bundle, one email — every selected framework in a single delivery."
+          >
+            <div className="grid gap-3 sm:grid-cols-3">
+              {ALL_TYPES.map((type) => {
+                const selected = reportTypes.includes(type);
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => toggleType(type)}
+                    className={`rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base ${
                       selected
-                        ? 'border-blue-400 bg-blue-500'
-                        : 'border-gray-600 bg-transparent'
+                        ? 'border-accent-primary bg-accent-primary/10'
+                        : 'border-border-default bg-bg-overlay hover:border-border-strong'
                     }`}
-                    aria-hidden
-                  />
-                  <span className="text-sm font-medium text-gray-100">
-                    {REPORT_LABELS[type]}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </SectionCard>
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`h-3.5 w-3.5 rounded-sm border ${
+                          selected
+                            ? 'border-accent-primary bg-accent-primary'
+                            : 'border-border-strong bg-transparent'
+                        }`}
+                        aria-hidden
+                      />
+                      <span className="text-sm font-medium text-text-primary">
+                        {REPORT_LABELS[type]}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </FormSection>
 
-      {/* Frequency */}
-      <SectionCard
-        label="D · Cadence"
-        title="Delivery frequency"
-        description="Quarterly matches most audit cycles. Monthly is for live-production teams."
-      >
-        <div className="inline-flex rounded-md border border-gray-800 overflow-hidden">
-          {(['monthly', 'quarterly'] as Frequency[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFrequency(f)}
-              className={`px-4 py-2 text-sm capitalize transition-colors ${
-                frequency === f
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-950/40 text-gray-300 hover:text-white'
-              }`}
+          {/* Frequency */}
+          <FormSection
+            label="D · Cadence"
+            title="Delivery frequency"
+            description="Quarterly matches most audit cycles. Monthly is for live-production teams."
+          >
+            <div className="inline-flex gap-2">
+              {(['monthly', 'quarterly'] as Frequency[]).map((f) => (
+                <Button
+                  key={f}
+                  variant={frequency === f ? 'primary' : 'secondary'}
+                  size="md"
+                  onClick={() => setFrequency(f)}
+                  className="capitalize"
+                >
+                  {f}
+                </Button>
+              ))}
+            </div>
+            <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+              Cron · {frequency === 'monthly' ? '0 9 1 * *' : '0 9 1 */3 *'}
+            </p>
+          </FormSection>
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3 border-t border-border-default pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <StatusBanner status={saveStatus} />
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={generateNow}
+              loading={generatingNow}
+              disabled={!ownerId.trim() || reportTypes.length === 0}
             >
-              {f}
-            </button>
-          ))}
+              {generatingNow ? 'Generating' : 'Generate now'}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={saveSchedule}
+              loading={saveStatus.kind === 'loading'}
+              disabled={!ownerId.trim()}
+            >
+              {saveStatus.kind === 'loading' ? 'Saving' : 'Schedule reports'}
+            </Button>
+          </div>
         </div>
-      </SectionCard>
-
-      {/* Save + Generate now */}
-      <div className="flex flex-col gap-3 border-t border-gray-800 pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <StatusBanner status={saveStatus} />
-        <div className="flex gap-3">
-          <button
-            onClick={generateNow}
-            disabled={generatingNow || !ownerId.trim() || reportTypes.length === 0}
-            className="px-5 py-3 border border-gray-700 hover:border-gray-500 text-sm font-medium text-gray-200 rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            {generatingNow ? 'Generating…' : 'Generate now'}
-          </button>
-          <button
-            onClick={saveSchedule}
-            disabled={saveStatus.kind === 'loading' || !ownerId.trim()}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
-          >
-            {saveStatus.kind === 'loading' ? 'Saving…' : 'Schedule Reports'}
-          </button>
-        </div>
-      </div>
+      </Card>
 
       {generateError && (
-        <div className="border border-red-800 bg-red-900/20 rounded-md p-3 text-xs text-red-300 font-mono">
-          {generateError}
-        </div>
+        <Card variant="danger-tinted" className="p-4">
+          <div className="font-mono text-xs text-accent-danger">
+            {generateError}
+          </div>
+        </Card>
       )}
     </div>
   );
 }
 
-/* ----------------------------- primitives ------------------------------ */
+/* ----------------------------- subcomponents ----------------------------- */
 
-function SectionCard({
+function ActiveScheduleCard({
+  schedule,
+  onCancel,
+  onTriggerNow,
+  triggering,
+}: {
+  schedule: ReportSchedule;
+  onCancel: () => void;
+  onTriggerNow: () => void;
+  triggering: boolean;
+}) {
+  return (
+    <Card variant="default" className="p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Tag variant="success">Active</Tag>
+            <Tag variant="info" className="font-mono">
+              {schedule.frequency === 'monthly' ? '0 9 1 * *' : '0 9 1 */3 *'}
+            </Tag>
+          </div>
+          <div className="text-sm text-text-primary">
+            Next report:{' '}
+            <span className="font-medium">
+              {formatDate(schedule.next_send_at)}
+            </span>{' '}
+            →{' '}
+            <span className="font-mono text-accent-success">
+              {schedule.email}
+            </span>
+          </div>
+          <div className="text-sm text-text-secondary">
+            Includes:{' '}
+            {schedule.report_types.map((t) => REPORT_LABELS[t]).join(', ')} ·{' '}
+            <span className="capitalize">{schedule.frequency}</span>
+          </div>
+          {schedule.last_sent_at && (
+            <div className="font-mono text-[11px] uppercase tracking-widest text-text-muted">
+              Last sent · {formatDate(schedule.last_sent_at)}
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onTriggerNow}
+            loading={triggering}
+          >
+            Trigger now
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="text-accent-danger hover:text-accent-danger"
+          >
+            Cancel schedule
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function FormSection({
   label,
   title,
   description,
@@ -373,13 +448,17 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border border-gray-800 rounded-lg p-6 space-y-5 bg-gray-950/40">
+    <section className="space-y-4">
       <div>
-        <div className="text-[10px] uppercase tracking-[0.25em] text-blue-400 font-mono">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-primary">
           {label}
         </div>
-        <h3 className="text-lg font-semibold mt-2">{title}</h3>
-        <p className="text-sm text-gray-500 mt-1">{description}</p>
+        <h3 className="mt-2 text-base font-semibold text-text-primary">
+          {title}
+        </h3>
+        <p className="mt-1 text-sm leading-relaxed text-text-secondary">
+          {description}
+        </p>
       </div>
       {children}
     </section>
@@ -388,18 +467,39 @@ function SectionCard({
 
 function StatusBanner({ status }: { status: Status }) {
   if (status.kind === 'idle' || status.kind === 'loading') {
-    return <span className="text-xs text-gray-500 font-mono" />;
+    return <span className="font-mono text-xs text-text-muted" />;
   }
   if (status.kind === 'success') {
     return (
-      <span className="text-xs text-emerald-300 font-mono">
+      <span className="font-mono text-xs uppercase tracking-widest text-accent-success">
         ✓ {status.message}
       </span>
     );
   }
   return (
-    <span className="text-xs text-red-300 font-mono">
+    <span className="font-mono text-xs uppercase tracking-widest text-accent-danger">
       ✗ {status.message}
     </span>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
   );
 }

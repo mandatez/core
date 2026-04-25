@@ -1,9 +1,18 @@
 import { createServerClient } from '@/lib/supabase-server';
+import {
+  Card,
+  EmptyState,
+  NumberDisplay,
+  SectionMarker,
+  Tag,
+} from '@/components/ui';
+import type { NumberDisplayAccent } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 export const metadata = {
   title: 'Analytics — MandateZ',
-  description: 'Agent behavior trends, trust score evolution, and risk distribution.',
+  description:
+    'Agent behavior trends, trust score evolution, and risk distribution.',
 };
 
 const WINDOW_DAYS = 30;
@@ -31,27 +40,30 @@ interface AgentRow {
 }
 
 const OUTCOME_COLORS: Record<Outcome, string> = {
-  allowed: '#22c55e',
-  flagged: '#f59e0b',
-  blocked: '#ef4444',
-  pending_approval: '#3b82f6',
+  allowed: 'var(--color-accent-success)',
+  flagged: 'var(--color-accent-warning)',
+  blocked: 'var(--color-accent-danger)',
+  pending_approval: 'var(--color-accent-primary)',
 };
 
 const ACTION_COLORS: Record<ActionType, string> = {
-  read: '#60a5fa',
+  read: 'var(--color-accent-primary)',
   write: '#a78bfa',
   export: '#f472b6',
-  delete: '#ef4444',
-  call: '#34d399',
-  payment: '#fbbf24',
+  delete: 'var(--color-accent-danger)',
+  call: 'var(--color-accent-success)',
+  payment: 'var(--color-accent-warning)',
 };
 
-const TRUST_GRADE_STYLE: Record<TrustGrade, string> = {
-  unverified: 'text-gray-400 border-gray-700 bg-gray-900/40',
-  low: 'text-yellow-300 border-yellow-700 bg-yellow-900/30',
-  medium: 'text-blue-300 border-blue-700 bg-blue-900/30',
-  high: 'text-green-300 border-green-700 bg-green-900/30',
-  verified: 'text-emerald-300 border-emerald-700 bg-emerald-900/30',
+const TRUST_GRADE_VARIANT: Record<
+  TrustGrade,
+  'neutral' | 'warning' | 'info' | 'success'
+> = {
+  unverified: 'neutral',
+  low: 'warning',
+  medium: 'info',
+  high: 'success',
+  verified: 'success',
 };
 
 function dayKey(date: Date): string {
@@ -63,7 +75,10 @@ function shortDay(key: string): string {
   return `${m}/${d}`;
 }
 
-function formatPercentChange(today: number, yesterday: number): { label: string; direction: 'up' | 'down' | 'flat' } {
+function formatPercentChange(today: number, yesterday: number): {
+  label: string;
+  direction: 'up' | 'down' | 'flat';
+} {
   if (yesterday === 0) {
     if (today === 0) return { label: 'no change', direction: 'flat' };
     return { label: `+${today}`, direction: 'up' };
@@ -78,7 +93,6 @@ function formatPercentChange(today: number, yesterday: number): { label: string;
 
 export default async function AnalyticsPage() {
   const supabase = createServerClient();
-
   const now = new Date();
   const windowStart = new Date(now.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
@@ -91,12 +105,15 @@ export default async function AnalyticsPage() {
       .limit(20000),
     supabase
       .from('agents')
-      .select('id, name, trust_score, trust_grade, total_events, allowed_ratio, flagged_ratio, blocked_ratio'),
+      .select(
+        'id, name, trust_score, trust_grade, total_events, allowed_ratio, flagged_ratio, blocked_ratio',
+      ),
   ]);
 
   const events = (eventsResult.data ?? []) as EventRow[];
   const agents = (agentsResult.data ?? []) as AgentRow[];
-  const loadError = eventsResult.error?.message ?? agentsResult.error?.message ?? null;
+  const loadError =
+    eventsResult.error?.message ?? agentsResult.error?.message ?? null;
 
   // --- Bucket events by day ---
   const days: string[] = [];
@@ -124,7 +141,6 @@ export default async function AnalyticsPage() {
   const maxDaily = Math.max(1, ...dailyTotals);
 
   // --- Summary stats: today vs yesterday ---
-  const todayKey = days[days.length - 1];
   const yesterdayKey = days[days.length - 2];
   const todayCount = dailyTotals[dailyTotals.length - 1];
   const yesterdayCount = yesterdayKey ? dailyTotals[dailyTotals.length - 2] : 0;
@@ -161,7 +177,9 @@ export default async function AnalyticsPage() {
     const k = dayKey(new Date(e.timestamp));
     if (!dailyByOutcome[k]) continue;
     if (!perAgentPerDay[e.agent_id]) perAgentPerDay[e.agent_id] = {};
-    if (!perAgentPerDay[e.agent_id][k]) perAgentPerDay[e.agent_id][k] = { allowed: 0, total: 0 };
+    if (!perAgentPerDay[e.agent_id][k]) {
+      perAgentPerDay[e.agent_id][k] = { allowed: 0, total: 0 };
+    }
     perAgentPerDay[e.agent_id][k].total += 1;
     if (e.outcome === 'allowed') perAgentPerDay[e.agent_id][k].allowed += 1;
   }
@@ -195,57 +213,71 @@ export default async function AnalyticsPage() {
     .slice(0, 10);
 
   return (
-    <div className="space-y-10">
-      <div>
-        <h2 className="text-2xl font-semibold">Analytics</h2>
-        <p className="text-gray-400 mt-1">
-          Agent behavior over the last {WINDOW_DAYS} days. Data derived from the signed event stream.
-        </p>
-      </div>
+    <div className="space-y-12">
+      <header className="space-y-4">
+        <SectionMarker number="03" label="ANALYTICS" />
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-text-primary">
+            Agent behavior — last {WINDOW_DAYS} days
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
+            Trends, trust score evolution, and risk distribution. Every metric
+            here is derived from the signed event stream.
+          </p>
+        </div>
+      </header>
 
       {loadError && (
-        <div className="text-red-400 border border-red-800 rounded-lg p-4 text-sm">
-          Failed to load analytics data: {loadError}
-        </div>
+        <Card variant="danger-tinted" className="p-4">
+          <div className="font-mono text-xs text-accent-danger">
+            Failed to load analytics data: {loadError}
+          </div>
+        </Card>
       )}
 
-      {/* --- Summary stats --- */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
+      {/* Summary stats */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatBlock
           label="Events today"
-          value={todayCount.toLocaleString()}
+          value={todayCount}
           hint={`vs. ${yesterdayCount.toLocaleString()} yesterday (${dayDelta.label})`}
-          accent={dayDelta.direction === 'up' ? 'green' : dayDelta.direction === 'down' ? 'red' : 'gray'}
+          accent={
+            dayDelta.direction === 'up'
+              ? 'success'
+              : dayDelta.direction === 'down'
+                ? 'danger'
+                : undefined
+          }
         />
-        <StatCard
+        <StatBlock
           label="Verified agents"
-          value={verifiedCount.toString()}
+          value={verifiedCount}
           hint={`of ${agents.length} total`}
-          accent="emerald"
+          accent="success"
         />
-        <StatCard
+        <StatBlock
           label="Needs attention"
-          value={attentionCount.toString()}
+          value={attentionCount}
           hint="agents at low / unverified grade"
-          accent={attentionCount > 0 ? 'amber' : 'gray'}
+          accent={attentionCount > 0 ? 'warning' : undefined}
         />
-        <StatCard
+        <StatBlock
           label="Block rate (7d)"
           value={`${weekBlockRate.toFixed(1)}%`}
           hint={`${weekBlocked.toLocaleString()} of ${weekTotal.toLocaleString()} events blocked`}
-          accent={weekBlockRate > 5 ? 'red' : 'gray'}
+          accent={weekBlockRate > 5 ? 'danger' : undefined}
         />
       </section>
 
-      {/* --- Events over time --- */}
-      <section>
-        <SectionHeader
+      {/* Events over time */}
+      <section className="space-y-4">
+        <SubsectionHeader
           title="Events over time"
           subtitle={`Last ${WINDOW_DAYS} days · stacked by outcome`}
         />
-        <div className="border border-gray-800 rounded-lg p-5">
+        <Card variant="default" className="p-5">
           {events.length === 0 ? (
-            <EmptyState label="No events in the last 30 days." />
+            <ChartEmpty label="No events in the last 30 days." />
           ) : (
             <>
               <EventsOverTimeChart
@@ -253,7 +285,7 @@ export default async function AnalyticsPage() {
                 buckets={dailyByOutcome}
                 maxDaily={maxDaily}
               />
-              <div className="flex items-center gap-5 mt-4 text-xs text-gray-400">
+              <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] uppercase tracking-widest text-text-muted">
                 <LegendDot color={OUTCOME_COLORS.allowed} label="allowed" />
                 <LegendDot color={OUTCOME_COLORS.flagged} label="flagged" />
                 <LegendDot color={OUTCOME_COLORS.blocked} label="blocked" />
@@ -261,105 +293,114 @@ export default async function AnalyticsPage() {
               </div>
             </>
           )}
-        </div>
+        </Card>
       </section>
 
-      {/* --- Trust score trend + Action distribution side by side --- */}
-      <section className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3">
-          <SectionHeader
+      {/* Trust trend + Action distribution */}
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <div className="space-y-4 lg:col-span-3">
+          <SubsectionHeader
             title="Trust indicator per agent"
             subtitle="Daily allowed ratio for the 5 most active agents"
           />
-          <div className="border border-gray-800 rounded-lg p-5 h-full">
+          <Card variant="default" className="h-full p-5">
             {trustTrendSeries.length === 0 ? (
-              <EmptyState label="No agent activity to trend." />
+              <ChartEmpty label="No agent activity to trend." />
             ) : (
               <TrustTrendChart series={trustTrendSeries} days={days} />
             )}
-          </div>
+          </Card>
         </div>
 
-        <div className="lg:col-span-2">
-          <SectionHeader
+        <div className="space-y-4 lg:col-span-2">
+          <SubsectionHeader
             title="Action type mix"
             subtitle={`${totalActions.toLocaleString()} events in window`}
           />
-          <div className="border border-gray-800 rounded-lg p-5 h-full">
+          <Card variant="default" className="h-full p-5">
             {totalActions === 0 ? (
-              <EmptyState label="No events." />
+              <ChartEmpty label="No events." />
             ) : (
               <ActionDonut counts={actionCounts} total={totalActions} />
             )}
-          </div>
+          </Card>
         </div>
       </section>
 
-      {/* --- Top risk agents --- */}
-      <section>
-        <SectionHeader
+      {/* Top risk agents */}
+      <section className="space-y-4">
+        <SubsectionHeader
           title="Top agents by block rate"
           subtitle="Sorted by policy-blocked ratio — these agents need attention"
         />
-        <div className="border border-gray-800 rounded-lg overflow-hidden">
+        <Card variant="default" className="overflow-hidden">
           {topRisk.length === 0 ? (
             <div className="p-5">
-              <EmptyState label="No agents with recorded events yet." />
+              <EmptyState
+                title="No agents with recorded events"
+                description="Once your agents start signing events, the highest-risk identities surface here."
+              />
             </div>
           ) : (
             <TopRiskTable rows={topRisk} />
           )}
-        </div>
+        </Card>
       </section>
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Chart components (inline SVG / CSS, no dependencies)
-// ---------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------
+ * Chart components — inline SVG / CSS, no dependencies. Colors map to
+ * design tokens via CSS custom properties.
+ * --------------------------------------------------------------------------*/
 
-function StatCard({
+function StatBlock({
   label,
   value,
   hint,
   accent,
 }: {
   label: string;
-  value: string;
+  value: string | number;
   hint: string;
-  accent: 'green' | 'red' | 'amber' | 'emerald' | 'gray';
+  accent?: NumberDisplayAccent;
 }) {
-  const accentMap: Record<typeof accent, string> = {
-    green: 'text-green-300',
-    red: 'text-red-300',
-    amber: 'text-yellow-300',
-    emerald: 'text-emerald-300',
-    gray: 'text-gray-200',
-  };
   return (
-    <div className="border border-gray-800 rounded-lg p-4">
-      <div className="text-xs uppercase tracking-wider text-gray-500">{label}</div>
-      <div className={`text-3xl font-semibold mt-1 tabular-nums ${accentMap[accent]}`}>
-        {value}
+    <Card variant="default" className="p-5">
+      <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+        {label}
       </div>
-      <div className="text-xs text-gray-500 mt-1">{hint}</div>
+      <div className="mt-3">
+        <NumberDisplay size="sm" value={value} accent={accent} />
+      </div>
+      <div className="mt-2 text-xs leading-relaxed text-text-muted">
+        {hint}
+      </div>
+    </Card>
+  );
+}
+
+function SubsectionHeader({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
+      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+        {subtitle}
+      </p>
     </div>
   );
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+function ChartEmpty({ label }: { label: string }) {
   return (
-    <div className="mb-3">
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <p className="text-xs text-gray-500">{subtitle}</p>
-    </div>
-  );
-}
-
-function EmptyState({ label }: { label: string }) {
-  return (
-    <div className="text-sm text-gray-500 text-center py-10 border border-dashed border-gray-800 rounded">
+    <div className="rounded-md border border-dashed border-border-default bg-bg-subtle/40 px-4 py-10 text-center text-sm text-text-muted">
       {label}
     </div>
   );
@@ -369,7 +410,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <span
-        className="inline-block w-2.5 h-2.5 rounded-sm"
+        className="inline-block h-2.5 w-2.5 rounded-sm"
         style={{ backgroundColor: color }}
       />
       {label}
@@ -394,11 +435,10 @@ function EventsOverTimeChart({
       <svg
         viewBox={`0 0 100 ${chartHeight}`}
         preserveAspectRatio="none"
-        className="w-full h-48"
+        className="h-48 w-full"
         role="img"
         aria-label="Events stacked bar chart over last 30 days"
       >
-        {/* Y axis gridlines at 25/50/75/100% */}
         {[0.25, 0.5, 0.75, 1].map((p) => (
           <line
             key={p}
@@ -406,7 +446,7 @@ function EventsOverTimeChart({
             x2={100}
             y1={chartHeight - p * chartHeight}
             y2={chartHeight - p * chartHeight}
-            stroke="#1f2937"
+            stroke="var(--color-border-default)"
             strokeWidth={0.2}
           />
         ))}
@@ -448,7 +488,7 @@ function EventsOverTimeChart({
           );
         })}
       </svg>
-      <div className="flex justify-between text-[10px] text-gray-500 mt-1 tabular-nums">
+      <div className="mt-1 flex justify-between font-mono text-[10px] uppercase tracking-widest text-text-muted tabular-nums">
         <span>{shortDay(days[0])}</span>
         <span>{shortDay(days[Math.floor(days.length / 2)])}</span>
         <span>{shortDay(days[days.length - 1])}</span>
@@ -461,11 +501,21 @@ function TrustTrendChart({
   series,
   days,
 }: {
-  series: Array<{ agentId: string; label: string; points: Array<{ x: number; y: number | null }> }>;
+  series: Array<{
+    agentId: string;
+    label: string;
+    points: Array<{ x: number; y: number | null }>;
+  }>;
   days: string[];
 }) {
   const chartHeight = 180;
-  const palette = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fbbf24'];
+  const palette = [
+    'var(--color-accent-primary)',
+    '#a78bfa',
+    'var(--color-accent-success)',
+    '#f472b6',
+    'var(--color-accent-warning)',
+  ];
   const lastIdx = days.length - 1;
 
   return (
@@ -473,7 +523,7 @@ function TrustTrendChart({
       <svg
         viewBox={`0 0 100 ${chartHeight}`}
         preserveAspectRatio="none"
-        className="w-full h-48"
+        className="h-48 w-full"
         role="img"
         aria-label="Trust indicator line chart per agent"
       >
@@ -484,7 +534,7 @@ function TrustTrendChart({
             x2={100}
             y1={chartHeight - p * chartHeight}
             y2={chartHeight - p * chartHeight}
-            stroke="#1f2937"
+            stroke="var(--color-border-default)"
             strokeWidth={0.2}
             strokeDasharray="0.5 0.8"
           />
@@ -501,7 +551,9 @@ function TrustTrendChart({
             }
             const x = lastIdx === 0 ? 0 : (p.x / lastIdx) * 100;
             const y = chartHeight - (p.y / 100) * chartHeight;
-            current.push(`${current.length === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`);
+            current.push(
+              `${current.length === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`,
+            );
           }
           if (current.length) segments.push(current.join(' '));
           return segments.map((d, j) => (
@@ -516,15 +568,18 @@ function TrustTrendChart({
           ));
         })}
       </svg>
-      <div className="flex justify-between text-[10px] text-gray-500 mt-1 tabular-nums">
+      <div className="mt-1 flex justify-between font-mono text-[10px] uppercase tracking-widest text-text-muted tabular-nums">
         <span>{shortDay(days[0])}</span>
         <span>{shortDay(days[days.length - 1])}</span>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
         {series.map((s, i) => (
-          <span key={s.agentId} className="inline-flex items-center gap-1.5 text-gray-400">
+          <span
+            key={s.agentId}
+            className="inline-flex items-center gap-1.5 text-text-secondary"
+          >
             <span
-              className="inline-block w-2.5 h-2.5 rounded-sm"
+              className="inline-block h-2.5 w-2.5 rounded-sm"
               style={{ backgroundColor: palette[i % palette.length] }}
             />
             <span className="font-mono truncate max-w-[160px]">{s.label}</span>
@@ -553,8 +608,19 @@ function ActionDonut({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <svg viewBox="0 0 100 100" className="w-40 h-40 -rotate-90" aria-label="Action type distribution">
-        <circle cx={50} cy={50} r={radius} fill="transparent" stroke="#1f2937" strokeWidth={14} />
+      <svg
+        viewBox="0 0 100 100"
+        className="h-40 w-40 -rotate-90"
+        aria-label="Action type distribution"
+      >
+        <circle
+          cx={50}
+          cy={50}
+          r={radius}
+          fill="transparent"
+          stroke="var(--color-border-default)"
+          strokeWidth={14}
+        />
         {entries.map((e) => {
           const fraction = e.value / total;
           const dash = fraction * circumference;
@@ -581,16 +647,18 @@ function ActionDonut({
       <div className="w-full space-y-1.5 text-xs">
         {entries.map((e) => (
           <div key={e.key} className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-gray-300">
+            <span className="inline-flex items-center gap-2 text-text-secondary">
               <span
-                className="inline-block w-2.5 h-2.5 rounded-sm"
+                className="inline-block h-2.5 w-2.5 rounded-sm"
                 style={{ backgroundColor: ACTION_COLORS[e.key] }}
               />
               {e.key}
             </span>
-            <span className="tabular-nums text-gray-400">
+            <span className="tabular-nums text-text-muted">
               {e.value.toLocaleString()}{' '}
-              <span className="text-gray-600">({((e.value / total) * 100).toFixed(0)}%)</span>
+              <span className="text-text-disabled">
+                ({((e.value / total) * 100).toFixed(0)}%)
+              </span>
             </span>
           </div>
         ))}
@@ -602,13 +670,13 @@ function ActionDonut({
 function TopRiskTable({ rows }: { rows: AgentRow[] }) {
   return (
     <table className="w-full text-sm">
-      <thead className="bg-gray-950/60 text-xs uppercase tracking-wider text-gray-500">
+      <thead className="bg-bg-subtle font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
         <tr>
-          <th className="text-left px-4 py-2 font-medium">Agent</th>
-          <th className="text-left px-4 py-2 font-medium">Grade</th>
-          <th className="text-right px-4 py-2 font-medium">Events</th>
-          <th className="px-4 py-2 font-medium">Block / Flag / Allow</th>
-          <th className="text-right px-4 py-2 font-medium">Block rate</th>
+          <th className="px-4 py-3 text-left font-medium">Agent</th>
+          <th className="px-4 py-3 text-left font-medium">Grade</th>
+          <th className="px-4 py-3 text-right font-medium">Events</th>
+          <th className="px-4 py-3 font-medium">Block / Flag / Allow</th>
+          <th className="px-4 py-3 text-right font-medium">Block rate</th>
         </tr>
       </thead>
       <tbody>
@@ -618,36 +686,36 @@ function TopRiskTable({ rows }: { rows: AgentRow[] }) {
           const flagged = agent.flagged_ratio ?? 0;
           const allowed = agent.allowed_ratio ?? 0;
           return (
-            <tr key={agent.id} className="border-t border-gray-800">
-              <td className="px-4 py-2.5">
-                <div className="text-gray-200 truncate max-w-[280px]">
+            <tr key={agent.id} className="border-t border-border-default">
+              <td className="px-4 py-3">
+                <div className="truncate text-text-primary max-w-[280px]">
                   {agent.name ?? '(unnamed)'}
                 </div>
-                <div className="font-mono text-xs text-gray-500 truncate max-w-[280px]">
+                <div className="truncate font-mono text-xs text-text-muted max-w-[280px]">
                   {agent.id}
                 </div>
               </td>
-              <td className="px-4 py-2.5">
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border rounded ${TRUST_GRADE_STYLE[grade]}`}
-                >
-                  {grade}
-                </span>
+              <td className="px-4 py-3">
+                <Tag variant={TRUST_GRADE_VARIANT[grade]}>{grade}</Tag>
               </td>
-              <td className="px-4 py-2.5 text-right tabular-nums text-gray-400">
+              <td className="px-4 py-3 text-right tabular-nums text-text-secondary">
                 {(agent.total_events ?? 0).toLocaleString()}
               </td>
-              <td className="px-4 py-2.5">
-                <RatioBar blocked={blocked} flagged={flagged} allowed={allowed} />
+              <td className="px-4 py-3">
+                <RatioBar
+                  blocked={blocked}
+                  flagged={flagged}
+                  allowed={allowed}
+                />
               </td>
-              <td className="px-4 py-2.5 text-right tabular-nums">
+              <td className="px-4 py-3 text-right tabular-nums">
                 <span
                   className={
                     blocked > 0.1
-                      ? 'text-red-300'
+                      ? 'text-accent-danger'
                       : blocked > 0.02
-                        ? 'text-yellow-300'
-                        : 'text-gray-400'
+                        ? 'text-accent-warning'
+                        : 'text-text-muted'
                   }
                 >
                   {(blocked * 100).toFixed(1)}%
@@ -672,13 +740,13 @@ function RatioBar({
 }) {
   const total = allowed + flagged + blocked;
   if (total === 0) {
-    return <div className="h-2 bg-gray-800 rounded" />;
+    return <div className="h-2 rounded bg-bg-overlay" />;
   }
   const a = (allowed / total) * 100;
   const f = (flagged / total) * 100;
   const b = (blocked / total) * 100;
   return (
-    <div className="flex h-2 rounded overflow-hidden bg-gray-800 min-w-[140px]">
+    <div className="flex h-2 min-w-[140px] overflow-hidden rounded bg-bg-overlay">
       <span
         style={{ width: `${b}%`, backgroundColor: OUTCOME_COLORS.blocked }}
         title={`blocked ${(blocked * 100).toFixed(1)}%`}

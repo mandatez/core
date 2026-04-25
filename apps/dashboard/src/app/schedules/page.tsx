@@ -1,4 +1,5 @@
 import SchedulesClient from './schedules-client';
+import { Card, SectionMarker } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,45 +11,84 @@ export const metadata = {
 
 export default function SchedulesPage() {
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold">Compliance Report Scheduler</h2>
-        <p className="text-gray-400 mt-1">
-          Get auditor-ready compliance reports automatically, every quarter.
-        </p>
-      </div>
+    <div className="space-y-10">
+      <header className="space-y-4">
+        <SectionMarker number="02" label="REPORT SCHEDULES" />
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-text-primary">
+            Compliance report scheduler
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary">
+            Get auditor-ready compliance reports automatically — every quarter,
+            delivered to your team&apos;s inbox.
+          </p>
+        </div>
+      </header>
 
       <SchedulesClient />
 
-      <div className="border-t border-gray-800 pt-6 mt-12">
-        <h3 className="text-lg font-medium mb-2">What&apos;s in the report?</h3>
-        <ul className="text-sm text-gray-400 space-y-2 list-disc list-inside">
-          <li>Executive summary with overall compliance score and status</li>
-          <li>Agent inventory table with trust scores and activity metrics</li>
-          <li>Framework-specific control mapping (OWASP / EU AI Act / HIPAA)</li>
-          <li>Audit trail sample of the most recent 20 signed events</li>
-          <li>Every event is Ed25519-signed — tamper-evident by design</li>
+      <Card variant="default" className="p-6">
+        <div className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
+          What&apos;s in the report
+        </div>
+        <ul className="space-y-2 text-sm leading-relaxed text-text-secondary">
+          <ScheduleBullet>
+            Executive summary with overall compliance score and status
+          </ScheduleBullet>
+          <ScheduleBullet>
+            Agent inventory table with trust scores and activity metrics
+          </ScheduleBullet>
+          <ScheduleBullet>
+            Framework-specific control mapping (OWASP / EU AI Act / HIPAA)
+          </ScheduleBullet>
+          <ScheduleBullet>
+            Audit trail sample of the most recent 20 signed events
+          </ScheduleBullet>
+          <ScheduleBullet>
+            Every event is Ed25519-signed — tamper-evident by design
+          </ScheduleBullet>
         </ul>
-      </div>
+      </Card>
 
-      <div className="border border-amber-900/40 bg-amber-950/20 rounded-lg p-4 text-sm text-amber-200/90">
-        <div className="font-medium text-amber-100 mb-1">Delivery requires Resend</div>
-        <p className="text-amber-200/80">
+      <Card variant="default" className="border-l-2 border-accent-warning p-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent-warning">
+          Delivery requires Resend
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-text-secondary">
           Reports are sent via{' '}
           <a
             href="https://resend.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-amber-100"
+            className="text-accent-primary underline-offset-4 hover:underline"
           >
             Resend
           </a>
-          . Make sure to add <code className="font-mono bg-amber-950/60 px-1 py-0.5 rounded">RESEND_API_KEY</code> to
-          your environment variables — free tier is 3,000 emails/month and works with any domain
-          internationally. Until a verified sender is configured, reports arrive from
-          <code className="font-mono bg-amber-950/60 px-1 py-0.5 rounded ml-1">onboarding@resend.dev</code>.
+          . Add{' '}
+          <code className="rounded bg-bg-overlay px-1.5 py-0.5 font-mono text-xs text-text-primary">
+            RESEND_API_KEY
+          </code>{' '}
+          to your environment variables — free tier is 3,000 emails/month and
+          works with any domain. Until a verified sender is configured, reports
+          arrive from{' '}
+          <code className="rounded bg-bg-overlay px-1.5 py-0.5 font-mono text-xs text-text-primary">
+            onboarding@resend.dev
+          </code>
+          .
         </p>
-      </div>
+      </Card>
     </div>
+  );
+}
+
+function ScheduleBullet({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-3">
+      <span
+        aria-hidden
+        className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-accent-primary"
+      />
+      <span>{children}</span>
+    </li>
   );
 }
