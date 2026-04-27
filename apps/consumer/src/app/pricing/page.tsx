@@ -4,7 +4,6 @@ import {
   Card,
   NumberDisplay,
   Section,
-  SectionMarker,
   Tag,
 } from '@/components/ui';
 
@@ -58,10 +57,8 @@ export default function PricingPage() {
     <div className="relative min-h-screen bg-[#080808] text-white">
       <Section className="relative">
         <div className="mx-auto max-w-7xl px-6 pt-24 md:px-10 lg:px-16">
-          <SectionMarker number="01" label="PRICING" />
-
           <h1
-            className="font-display mt-4 max-w-4xl font-semibold tracking-[-0.025em] leading-[1.05] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
+            className="font-display max-w-4xl font-semibold tracking-[-0.025em] leading-[1.05] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
             style={{ fontSize: 'clamp(1.875rem, 3.5vw, 3rem)' }}
           >
             Built for the scale of your mandate

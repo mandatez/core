@@ -293,10 +293,7 @@ export function VercelSimulation() {
         />
       </div>
 
-      <div className="mt-4 flex items-center justify-end gap-3">
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/30">
-          Auto-replays every 18s
-        </span>
+      <div className="mt-4 flex items-center justify-end">
         <button
           type="button"
           onClick={() => start()}

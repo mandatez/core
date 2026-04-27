@@ -7,7 +7,6 @@ import {
   Card,
   NumberDisplay,
   Section,
-  SectionMarker,
   Tag,
 } from '@/components/ui';
 
@@ -137,13 +136,6 @@ function Hero() {
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-transparent to-[#080808]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-6 pt-40 pb-24 md:px-10 lg:px-16">
-        <div className="mz-reveal mz-reveal-1 mb-8 flex items-center gap-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-white/40">
-            MZ · 001 — The Trust Layer for AI Agents
-          </span>
-          <span className="mz-hairline h-px w-16 md:w-24" />
-        </div>
-
         <h1
           className="mz-reveal mz-reveal-2 font-display font-bold tracking-[-0.03em] leading-[0.98] text-white [word-break:normal] [overflow-wrap:normal] [hyphens:none]"
           style={{ fontSize: 'clamp(2.25rem, 5.5vw, 4.5rem)' }}
@@ -270,9 +262,7 @@ function BreachSection() {
   return (
     <Section id="breach-feed" className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-6xl px-6 md:px-10 lg:px-16">
-        <SectionMarker number="02" label="THREAT INTELLIGENCE" />
-
-        <h2 className={`${H2_CLASS} mt-4 max-w-4xl`}>
+        <h2 className={`${H2_CLASS} max-w-4xl`}>
           AI Agent Incidents <span className="text-white/30">—</span> Live
         </h2>
 
@@ -304,9 +294,7 @@ function DifferenceSection() {
   return (
     <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionMarker number="03" label="THE DIFFERENCE" />
-
-        <h2 className={`${H2_CLASS} mt-4 max-w-4xl`}>
+        <h2 className={`${H2_CLASS} max-w-4xl`}>
           How MandateZ blocks
           <br />
           the Vercel attack.
@@ -367,9 +355,7 @@ function HowItWorks() {
   return (
     <Section id="how-it-works" className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionMarker number="04" label="ARCHITECTURE" />
-
-        <h2 className={`${H2_CLASS} mt-4 max-w-4xl`}>
+        <h2 className={`${H2_CLASS} max-w-4xl`}>
           Trust infrastructure
           <br />
           for every agent.
@@ -440,8 +426,7 @@ function TrustScoreSection() {
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
         <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
-            <SectionMarker number="05" label="VERIFICATION" />
-            <h2 className={`${H2_CLASS} mt-4 max-w-2xl`}>
+            <h2 className={`${H2_CLASS} max-w-2xl`}>
               Agent Trust Scores
               <br />
               <span className="text-white/50">— publicly verifiable.</span>
@@ -552,9 +537,7 @@ function ComplianceSection() {
   return (
     <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionMarker number="06" label="COMPLIANCE" />
-
-        <h2 className={`${H2_CLASS} mt-4 max-w-4xl`}>
+        <h2 className={`${H2_CLASS} max-w-4xl`}>
           One click.{' '}
           <span className="text-white/50">Auditor-ready.</span>
         </h2>
@@ -631,9 +614,7 @@ function WorksWithSection() {
   return (
     <Section tight className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionMarker number="07" label="ECOSYSTEM" />
-
-        <h2 className={`${H2_CLASS} mt-4 max-w-4xl`}>
+        <h2 className={`${H2_CLASS} max-w-4xl`}>
           Works with every framework.
         </h2>
 
@@ -711,9 +692,7 @@ function PricingSection() {
   return (
     <Section className="relative border-t border-white/[0.05]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionMarker number="08" label="PRICING" />
-
-        <h2 className={`${H2_CLASS} mt-4 max-w-4xl`}>
+        <h2 className={`${H2_CLASS} max-w-4xl`}>
           Built for the scale of your mandate.
         </h2>
 
@@ -830,9 +809,7 @@ function ReportTeaserSection() {
       />
 
       <div className="mx-auto max-w-7xl px-6 md:px-10 lg:px-16">
-        <SectionMarker number="8.5" label="ORIGINAL RESEARCH" />
-
-        <div className="mt-4 grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
             <h2 className={`${H2_CLASS} max-w-3xl`}>
               State of AI Agent Governance 2026
@@ -924,8 +901,7 @@ function ClosingCtaSection() {
       className="relative border-t border-white/[0.05] bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.08),transparent_70%)]"
     >
       <div className="mx-auto max-w-3xl px-6 text-center md:px-10">
-        <SectionMarker number="09" label="START" className="justify-center" />
-        <h2 className="font-display mt-4 text-[clamp(1.5rem,2.4vw,2rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-white">
+        <h2 className="font-display text-[clamp(1.5rem,2.4vw,2rem)] font-semibold leading-[1.1] tracking-[-0.025em] text-white">
           Every agent needs a mandate.
         </h2>
         <p className="mt-4 text-[15px] leading-relaxed text-white/60 md:text-[16px]">
