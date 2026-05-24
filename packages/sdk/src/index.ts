@@ -50,6 +50,15 @@ export type { MandateZAgentConfig } from './wrapper/index.js';
 
 export { withMandateZ } from './integrations/langchain/decorator.js';
 
+export { verifyAttestation } from './attestations/index.js';
+export type {
+  AttestationRecord,
+  AttestationViolation,
+  Verdict,
+  VerifyAttestationResponse,
+  VerifyAttestationOptions,
+} from './attestations/index.js';
+
 export {
   DatadogExporter,
   SplunkExporter,
