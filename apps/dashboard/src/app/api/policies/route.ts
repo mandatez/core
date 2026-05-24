@@ -7,6 +7,8 @@ import { POLICY_PRESETS, findPreset } from '@/lib/policy-presets';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const AGENT_ID_RE = /^ag_[A-Za-z0-9_-]+$/;
+
 function policyId(): string {
   return `pol_${randomBytes(10).toString('hex')}`;
 }
@@ -50,6 +52,28 @@ export async function POST(request: NextRequest) {
   const id = policyId();
 
   const supabase = createServerClient();
+
+  // Cross-tenant guard: if the caller specifies an agent_id, it must belong
+  // to them. Otherwise an attacker could attach a policy to another tenant's
+  // agent_id, polluting downstream audit/attribution surfaces. 404 (not 403)
+  // mirrors the rest of the app — never confirm/deny IDs across tenants.
+  const rawAgentId = body.agent_id?.trim();
+  let scopedAgentId: string | null = null;
+  if (rawAgentId) {
+    if (!AGENT_ID_RE.test(rawAgentId)) {
+      return NextResponse.json({ error: 'agent_id must match /^ag_[A-Za-z0-9_-]+$/' }, { status: 400 });
+    }
+    const { data: agent } = await supabase
+      .from('agents')
+      .select('id, owner_id')
+      .eq('id', rawAgentId)
+      .maybeSingle();
+    if (!agent || agent.owner_id !== ownerId) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+    scopedAgentId = agent.id;
+  }
+
   const { data, error } = await supabase
     .from('policies')
     .insert({
@@ -58,7 +82,7 @@ export async function POST(request: NextRequest) {
       name: displayName,
       rules: {
         preset_id: preset.id,
-        agent_id: body.agent_id ?? null,
+        agent_id: scopedAgentId,
         rules: preset.rules,
       },
     })

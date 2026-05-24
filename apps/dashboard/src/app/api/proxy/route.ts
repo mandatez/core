@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase-server';
 import { requireApiKeyAuth } from '@/lib/require-auth';
+import { checkSsrfSafe } from '@/lib/ssrf-guard';
 import {
   generateAgentIdentity,
   createSignedEvent,
@@ -39,37 +40,11 @@ const UNSAFE_FORWARD_HEADERS = new Set([
 type ActionType = AgentEventInput['action_type'];
 const VALID_ACTION_TYPES: readonly ActionType[] = ['read', 'write', 'export', 'delete', 'call', 'payment'];
 
-// --- SSRF guard -----------------------------------------------------------
-// Block private, loopback, link-local, and cloud-metadata targets so a
-// compromised agent cannot use MandateZ as a pivot into internal networks.
-const PRIVATE_IP_PATTERNS: RegExp[] = [
-  /^127\./,                              // loopback
-  /^10\./,                               // RFC1918
-  /^172\.(1[6-9]|2\d|3[01])\./,          // RFC1918
-  /^192\.168\./,                         // RFC1918
-  /^169\.254\./,                         // link-local (AWS/GCP metadata)
-  /^0\./,                                // "this" network
-  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // CGNAT
-  /^::1$/,                               // IPv6 loopback
-  /^fc/, /^fd/,                          // IPv6 unique-local
-  /^fe80:/,                              // IPv6 link-local
-];
-
-const BLOCKED_HOSTS = new Set<string>([
-  'localhost',
-  'metadata.google.internal',
-  'metadata.goog',
-]);
-
-function isBlockedTarget(url: URL): string | null {
-  if (url.protocol !== 'https:') return 'target must use https';
-  const host = url.hostname.toLowerCase();
-  if (BLOCKED_HOSTS.has(host)) return 'target host is blocked';
-  if (PRIVATE_IP_PATTERNS.some((re) => re.test(host))) {
-    return 'target resolves to a private or link-local address';
-  }
-  return null;
-}
+// SSRF guard is centralized in @/lib/ssrf-guard. It resolves the hostname
+// and blocks any FQDN that maps to a private/loopback/link-local/CGNAT
+// address — closing the DNS-rebinding gap that a hostname-pattern-only check
+// would leave open. Residual TTL-flip risk MUST be mitigated by outbound
+// egress restrictions at the infrastructure layer.
 
 const MAX_PROXY_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -289,7 +264,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return errorResponse(400, { error: `invalid X-MandateZ-Target-URL: not a valid URL` });
   }
 
-  const blocked = isBlockedTarget(target);
+  const blocked = await checkSsrfSafe(targetUrl);
   if (blocked) {
     return errorResponse(400, { error: blocked });
   }

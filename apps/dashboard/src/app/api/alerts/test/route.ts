@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiKeyAuth } from '@/lib/require-auth';
+import { checkSsrfSafe } from '@/lib/ssrf-guard';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -7,14 +8,6 @@ export const dynamic = 'force-dynamic';
 interface TestAlertRequest {
   channel: 'slack' | 'webhook';
   url?: string;
-}
-
-function isHttpsUrl(value: string): boolean {
-  try {
-    return new URL(value).protocol === 'https:';
-  } catch {
-    return false;
-  }
 }
 
 const TEST_PAYLOAD = {
@@ -41,8 +34,16 @@ export async function POST(request: NextRequest) {
   }
 
   const url = typeof body.url === 'string' ? body.url.trim() : '';
-  if (!url || !isHttpsUrl(url)) {
+  if (!url) {
     return NextResponse.json({ error: 'Valid HTTPS URL required' }, { status: 400 });
+  }
+
+  // SSRF guard — block private/loopback/link-local/cloud-metadata targets.
+  // Authenticated SSRF would still let any tenant probe internal services,
+  // which is unacceptable for an enterprise security product.
+  const ssrfReason = await checkSsrfSafe(url);
+  if (ssrfReason) {
+    return NextResponse.json({ error: `Invalid URL: ${ssrfReason}` }, { status: 400 });
   }
 
   const payload =

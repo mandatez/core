@@ -39,9 +39,19 @@ interface AgentRow {
   name: string | null;
 }
 
+// CSV formula injection: Excel / Sheets / Calc evaluate any cell starting with
+// =, +, -, @, tab, or CR as a formula. Auditors are the primary consumer of
+// these exports, so an attacker-controlled resource like `=HYPERLINK(...)` or
+// `@SUM(...)` would execute when opened. Prefix any such cell with a single
+// quote — the quote is stripped on display but disarms the formula.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+
 function escapeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const str = String(value);
+  let str = String(value);
+  if (FORMULA_TRIGGER.test(str)) {
+    str = `'${str}`;
+  }
   // RFC 4180: quote when the cell contains a comma, quote, CR, or LF.
   if (/[",\r\n]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
