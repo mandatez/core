@@ -4,12 +4,17 @@ import { PolicyEngine } from './policy/index.js';
 import { OversightGate } from './oversight/index.js';
 import { computeTrustScore } from './trust/posture.js';
 import { checkIdentity as hibpCheckIdentity } from './identity/hibp.js';
+import {
+  getRiskScore as fetchRiskScore,
+  computeRiskScore as triggerRiskScoreCompute,
+} from './risk/index.js';
 import type { AgentTrustProfile } from './trust/posture.js';
 import type { AgentEvent, AgentEventInput } from './events/schema.js';
 import type { Policy } from './policy/index.js';
 import type { OversightConfig } from './oversight/index.js';
 import type { IdentityCheckResult } from './identity/hibp.js';
 import type { EventExporter } from './exporters/index.js';
+import type { RiskScoreRecord } from './risk/index.js';
 
 /** The action fields a developer passes to track() */
 export interface TrackInput {
@@ -503,5 +508,40 @@ export class MandateZClient {
       verificationId: raw.verification.verification_id,
       raw,
     };
+  }
+
+  /**
+   * Fetch the most recent risk score for an agent from the MandateZ
+   * dashboard. The server auto-computes a fresh score if none exists yet,
+   * so this never returns null.
+   *
+   * Requires `apiUrl` and `apiKey` in the client config.
+   */
+  async getRiskScore(agentId: string): Promise<RiskScoreRecord> {
+    if (!this.apiUrl || !this.apiKey) {
+      throw new Error(
+        'MandateZClient: apiUrl and apiKey are required in config to call getRiskScore()',
+      );
+    }
+    return fetchRiskScore(agentId, { apiUrl: this.apiUrl, apiKey: this.apiKey });
+  }
+
+  /**
+   * Trigger a fresh risk-score recomputation for an agent. The returned
+   * record is the newly persisted snapshot.
+   *
+   * Requires `apiUrl` and `apiKey` in the client config.
+   */
+  async computeRiskScore(agentId: string, windowDays?: number): Promise<RiskScoreRecord> {
+    if (!this.apiUrl || !this.apiKey) {
+      throw new Error(
+        'MandateZClient: apiUrl and apiKey are required in config to call computeRiskScore()',
+      );
+    }
+    return triggerRiskScoreCompute(
+      agentId,
+      { apiUrl: this.apiUrl, apiKey: this.apiKey },
+      windowDays,
+    );
   }
 }

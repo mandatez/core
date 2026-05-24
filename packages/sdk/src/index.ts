@@ -42,6 +42,17 @@ export type { IdentityCheckResult, IdentityStatus, HibpBreach } from './identity
 export { computeTrustScore } from './trust/posture.js';
 export type { AgentTrustProfile } from './trust/posture.js';
 
+export { getRiskScore, computeRiskScore } from './risk/index.js';
+export type {
+  RiskScoreRecord,
+  RiskGrade,
+  RiskDomain,
+  RiskActionType,
+  RiskSeverityBucket,
+  RiskIncidentPatterns,
+  RiskClientConfig,
+} from './risk/index.js';
+
 export { MandateZN8nHook } from './integrations/n8n/index.js';
 export { MandateZLangChainCallback } from './integrations/langchain/index.js';
 

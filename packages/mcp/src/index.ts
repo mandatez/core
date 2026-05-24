@@ -10,6 +10,8 @@ import {
   PolicyEngine,
   computeTrustScore,
   checkIdentity as hibpCheckIdentity,
+  getRiskScore as fetchRiskScore,
+  computeRiskScore as triggerRiskScoreCompute,
 } from '@mandatez/sdk';
 import type {
   AgentEventInput,
@@ -24,6 +26,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const OWNER_ID = process.env.MANDATEZ_OWNER_ID ?? 'default-owner';
 const HIBP_API_KEY = process.env.HIBP_API_KEY;
+const MANDATEZ_API_URL = process.env.MANDATEZ_API_URL;
+const MANDATEZ_API_KEY = process.env.MANDATEZ_API_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error(
@@ -568,6 +572,68 @@ server.tool(
           {
             type: 'text' as const,
             text: `Verification failed: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Tool 8 — get_risk_score
+// ---------------------------------------------------------------------------
+
+server.tool(
+  'get_risk_score',
+  "Get the latest severity-weighted risk score for an agent (0-100, graded A+ to F). Includes severity breakdown, domain classification, and detected incident patterns (hourly spikes, repeated blocks, read→write→export→delete escalations). Optionally triggers a fresh recomputation over a custom lookback window.",
+  {
+    agent_id: z.string().describe('Agent ID (ag_ prefix)'),
+    recompute: z
+      .boolean()
+      .optional()
+      .describe('When true, triggers a fresh recomputation instead of returning the cached score'),
+    window_days: z
+      .number()
+      .int()
+      .min(1)
+      .max(365)
+      .optional()
+      .describe('Lookback window in days for recomputation (default 30, only used when recompute=true)'),
+  },
+  async ({ agent_id, recompute, window_days }) => {
+    if (!MANDATEZ_API_URL || !MANDATEZ_API_KEY) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: 'MANDATEZ_API_URL and MANDATEZ_API_KEY environment variables must be set to query risk scores.',
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    try {
+      const config = { apiUrl: MANDATEZ_API_URL, apiKey: MANDATEZ_API_KEY };
+      const score = recompute
+        ? await triggerRiskScoreCompute(agent_id, config, window_days)
+        : await fetchRiskScore(agent_id, config);
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(score, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Failed to get risk score: ${err instanceof Error ? err.message : String(err)}`,
           },
         ],
         isError: true,
