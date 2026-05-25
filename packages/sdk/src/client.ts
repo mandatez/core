@@ -8,6 +8,11 @@ import {
   getRiskScore as fetchRiskScore,
   computeRiskScore as triggerRiskScoreCompute,
 } from './risk/index.js';
+import {
+  fetchWithTimeout,
+  readErrorMessage,
+  MandateZHttpError,
+} from './internal/http.js';
 import type { AgentTrustProfile } from './trust/posture.js';
 import type { AgentEvent, AgentEventInput } from './events/schema.js';
 import type { Policy } from './policy/index.js';
@@ -362,15 +367,37 @@ export class MandateZClient {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
 
-    const res = await fetch(`${this.apiUrl}/api/events/batch`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ owner_id: this.ownerId, events }),
-    });
+    const url = `${this.apiUrl}/api/events/batch`;
+    let res: Response;
+    try {
+      res = await fetchWithTimeout('trackBatch', url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ owner_id: this.ownerId, events }),
+      });
+    } catch (err) {
+      // Network/timeout: report as a rejected batch so the caller's accounting stays sane.
+      const detail = err instanceof Error ? err.message : String(err);
+      return {
+        accepted: 0,
+        rejected: events.length,
+        errors: [{ index: -1, reason: 'network_error', detail }],
+      };
+    }
 
-    const payload = (await res.json().catch(() => ({}))) as TrackBatchResult & {
-      error?: string;
-    };
+    let payload: TrackBatchResult & { error?: string } = { accepted: 0, rejected: 0 };
+    try {
+      const text = await res.text();
+      if (text) {
+        try {
+          payload = JSON.parse(text) as TrackBatchResult & { error?: string };
+        } catch {
+          payload = { accepted: 0, rejected: events.length, error: `non-JSON response: ${text.slice(0, 200)}` };
+        }
+      }
+    } catch {
+      // Body read failure — fall through with the default empty payload.
+    }
 
     if (!res.ok) {
       return {
@@ -478,7 +505,8 @@ export class MandateZClient {
    * }
    */
   async verifyAgent(input: VerifyAgentInput): Promise<VerifyAgentOutput> {
-    const res = await fetch(`${this.directoryUrl}/api/agents/verify`, {
+    const url = `${this.directoryUrl}/api/agents/verify`;
+    const res = await fetchWithTimeout('verifyAgent', url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -490,15 +518,25 @@ export class MandateZClient {
     });
 
     if (!res.ok) {
-      const err = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(
-        err.error
-          ? `MandateZ verifyAgent failed: ${err.error}`
-          : `MandateZ verifyAgent failed: HTTP ${res.status}`,
-      );
+      throw new MandateZHttpError({
+        label: 'verifyAgent',
+        url,
+        status: res.status,
+        reason: await readErrorMessage(res, `HTTP ${res.status}`),
+      });
     }
 
-    const raw = (await res.json()) as VerifyAgentRawResponse;
+    let raw: VerifyAgentRawResponse;
+    try {
+      raw = (await res.json()) as VerifyAgentRawResponse;
+    } catch {
+      throw new MandateZHttpError({
+        label: 'verifyAgent',
+        url,
+        status: res.status,
+        reason: 'response was not JSON',
+      });
+    }
 
     return {
       verified: raw.verified,

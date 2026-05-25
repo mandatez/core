@@ -1,3 +1,11 @@
+import { z } from 'zod';
+import {
+  fetchWithTimeout,
+  parseJsonResponse,
+  readErrorMessage,
+  MandateZHttpError,
+} from '../internal/http.js';
+
 export type RiskGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'F';
 export type RiskDomain =
   | 'financial'
@@ -48,66 +56,127 @@ export interface RiskClientConfig {
   apiUrl: string;
   /** Bearer API key ("mz_live_..."). */
   apiKey: string;
+  /** Optional fetch timeout in ms. Defaults to 15s. */
+  timeoutMs?: number;
 }
+
+const RiskActionTypeSchema = z.enum(['read', 'write', 'export', 'delete', 'call', 'payment']);
+
+const RiskSeverityBucketSchema = z.object({
+  events: z.number(),
+  blocked: z.number(),
+  flagged: z.number(),
+  deduction: z.number(),
+});
+
+const RiskIncidentPatternsSchema = z.object({
+  hourly_spikes: z.array(
+    z.object({
+      hour: z.string(),
+      count: z.number(),
+      ratio_over_average: z.number(),
+    }),
+  ),
+  repeated_blocks: z.array(
+    z.object({
+      resource: z.string(),
+      blocked_count: z.number(),
+    }),
+  ),
+  escalations: z.array(
+    z.object({
+      resource: z.string(),
+      chain: z.array(RiskActionTypeSchema),
+      started_at: z.string(),
+      ended_at: z.string(),
+    }),
+  ),
+});
+
+const RiskScoreRecordSchema = z.object({
+  id: z.string().optional(),
+  agent_id: z.string(),
+  owner_id: z.string(),
+  overall_score: z.number(),
+  grade: z.enum(['A+', 'A', 'B', 'C', 'D', 'F']),
+  severity_breakdown: z.record(RiskActionTypeSchema, RiskSeverityBucketSchema),
+  domain_classification: z.record(
+    z.enum(['financial', 'communication', 'database', 'external_api', 'storage', 'other']),
+    z.number(),
+  ),
+  incident_patterns: RiskIncidentPatternsSchema,
+  blocked_ratio: z.number(),
+  flagged_ratio: z.number(),
+  event_count: z.number(),
+  window_days: z.number(),
+  computed_at: z.string(),
+}) satisfies z.ZodType<RiskScoreRecord>;
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
-async function readError(res: Response, fallback: string): Promise<string> {
-  try {
-    const body = (await res.json()) as { error?: string };
-    return body.error ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 /**
  * Fetch the most recent risk score for an agent. The dashboard auto-computes
  * a fresh score if none exists yet, so this never returns null.
+ *
+ * Throws {@link MandateZHttpError} on network failure, timeout, non-JSON
+ * response, or unexpected response shape.
  */
 export async function getRiskScore(
   agentId: string,
   config: RiskClientConfig,
 ): Promise<RiskScoreRecord> {
-  const res = await fetch(`${normalizeUrl(config.apiUrl)}/api/risk/${agentId}`, {
+  const url = `${normalizeUrl(config.apiUrl)}/api/risk/${agentId}`;
+  const res = await fetchWithTimeout('getRiskScore', url, {
     method: 'GET',
     headers: { Authorization: `Bearer ${config.apiKey}` },
+    timeoutMs: config.timeoutMs,
   });
 
   if (!res.ok) {
-    throw new Error(
-      `MandateZ getRiskScore failed: ${await readError(res, `HTTP ${res.status}`)}`,
-    );
+    throw new MandateZHttpError({
+      label: 'getRiskScore',
+      url,
+      status: res.status,
+      reason: await readErrorMessage(res, `HTTP ${res.status}`),
+    });
   }
 
-  return (await res.json()) as RiskScoreRecord;
+  return parseJsonResponse('getRiskScore', url, res, RiskScoreRecordSchema);
 }
 
 /**
  * Trigger a fresh risk score computation for an agent and return the new record.
  * `windowDays` defaults to the dashboard's server-side default (30) when omitted.
+ *
+ * Throws {@link MandateZHttpError} on network failure, timeout, non-JSON
+ * response, or unexpected response shape.
  */
 export async function computeRiskScore(
   agentId: string,
   config: RiskClientConfig,
   windowDays?: number,
 ): Promise<RiskScoreRecord> {
-  const res = await fetch(`${normalizeUrl(config.apiUrl)}/api/risk/compute/${agentId}`, {
+  const url = `${normalizeUrl(config.apiUrl)}/api/risk/compute/${agentId}`;
+  const res = await fetchWithTimeout('computeRiskScore', url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(windowDays != null ? { window_days: windowDays } : {}),
+    timeoutMs: config.timeoutMs,
   });
 
   if (!res.ok) {
-    throw new Error(
-      `MandateZ computeRiskScore failed: ${await readError(res, `HTTP ${res.status}`)}`,
-    );
+    throw new MandateZHttpError({
+      label: 'computeRiskScore',
+      url,
+      status: res.status,
+      reason: await readErrorMessage(res, `HTTP ${res.status}`),
+    });
   }
 
-  return (await res.json()) as RiskScoreRecord;
+  return parseJsonResponse('computeRiskScore', url, res, RiskScoreRecordSchema);
 }

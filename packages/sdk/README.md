@@ -40,30 +40,11 @@ npm install @mandatez/sdk
 
 MandateZ supports two configuration modes. Pick one.
 
-### Enterprise mode — `apiKey` (recommended)
+### Standard mode — Supabase credentials
 
-Generate a key at `/keys` in the MandateZ dashboard. One revocable string replaces the raw Supabase credentials your agents used to carry:
-
-```typescript
-import { MandateZClient } from '@mandatez/sdk';
-
-const client = new MandateZClient({
-  apiKey: process.env.MANDATEZ_API_KEY!,   // "mz_live_..."
-  agentId: 'ag_...',
-  ownerId: 'your_org_id',
-  privateKey: process.env.AGENT_PRIVATE_KEY!,
-});
-```
-
-Why enterprise customers prefer this:
-- **Revocable** — rotate a compromised key from the dashboard in one click without touching Supabase.
-- **Auditable** — every key has a name, creation time, and `last_used_at` timestamp.
-- **Scoped** — keys are bound to an `owner_id`; they cannot reach another tenant's data.
-- **One string, one secret** — no pasting Supabase URLs into a Vercel env var.
-
-### Legacy mode — raw Supabase credentials (still supported)
-
-The original configuration still works for local dev, one-off integrations, and anyone already shipping on it:
+Every client needs Supabase credentials so `track()` can sign events
+straight into your event stream. Generate an agent identity once, then
+keep the keypair somewhere safe.
 
 ```typescript
 import { generateAgentIdentity, MandateZClient } from '@mandatez/sdk';
@@ -77,6 +58,32 @@ const client = new MandateZClient({
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
 });
 ```
+
+### Enterprise add-on — dashboard `apiKey`
+
+For the batch and risk-score endpoints (`trackBatch()`, `getRiskScore()`,
+`computeRiskScore()`) the client also accepts an `apiUrl` + `apiKey` pair.
+Generate the key at `/keys` in the MandateZ dashboard:
+
+```typescript
+const client = new MandateZClient({
+  // Supabase creds are still required for track()
+  agentId: 'ag_...',
+  ownerId: 'your_org_id',
+  privateKey: process.env.AGENT_PRIVATE_KEY!,
+  supabaseUrl: process.env.SUPABASE_URL!,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY!,
+
+  // Enable batch + risk endpoints
+  apiUrl: 'https://dashboard.mandatez.com',
+  apiKey: process.env.MANDATEZ_API_KEY!,   // "mz_live_..."
+});
+```
+
+Why enterprise customers add the API key:
+- **Revocable** — rotate a compromised key from the dashboard in one click.
+- **Auditable** — every key has a name, creation time, and `last_used_at` timestamp.
+- **Scoped** — keys are bound to an `owner_id`; they cannot reach another tenant's data.
 
 ## Usage
 

@@ -36,6 +36,9 @@
     "ed25519"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "@types/libsodium-wrappers": "^0.8.2",
     "vitest": "^4.1.0"

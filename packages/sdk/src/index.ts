@@ -42,6 +42,8 @@ export type { IdentityCheckResult, IdentityStatus, HibpBreach } from './identity
 export { computeTrustScore } from './trust/posture.js';
 export type { AgentTrustProfile } from './trust/posture.js';
 
+export { MandateZHttpError } from './internal/http.js';
+
 export { getRiskScore, computeRiskScore } from './risk/index.js';
 export type {
   RiskScoreRecord,

@@ -24,7 +24,7 @@ import type {
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const OWNER_ID = process.env.MANDATEZ_OWNER_ID ?? 'default-owner';
+const OWNER_ID = process.env.MANDATEZ_OWNER_ID;
 const HIBP_API_KEY = process.env.HIBP_API_KEY;
 const MANDATEZ_API_URL = process.env.MANDATEZ_API_URL;
 const MANDATEZ_API_KEY = process.env.MANDATEZ_API_KEY;
@@ -32,6 +32,16 @@ const MANDATEZ_API_KEY = process.env.MANDATEZ_API_KEY;
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error(
     'Missing required environment variables: SUPABASE_URL, SUPABASE_ANON_KEY',
+  );
+  process.exit(1);
+}
+
+if (!OWNER_ID) {
+  // Inserts run with the anon key + RLS policy `owner_id = auth.jwt() ->> 'sub'`.
+  // Without an explicit owner_id, every register_agent / track_event call would
+  // be silently rejected by Postgres. Fail loudly at startup instead.
+  console.error(
+    'Missing required environment variable: MANDATEZ_OWNER_ID. Set it to the owner_id you use in the dashboard.',
   );
   process.exit(1);
 }

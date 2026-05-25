@@ -1,3 +1,11 @@
+import { z } from 'zod';
+import {
+  fetchWithTimeout,
+  parseJsonResponse,
+  readErrorMessage,
+  MandateZHttpError,
+} from '../internal/http.js';
+
 export type Verdict = 'clean' | 'flagged' | 'violations_detected';
 
 export interface AttestationViolation {
@@ -33,13 +41,58 @@ export interface VerifyAttestationResponse {
 export interface VerifyAttestationOptions {
   /**
    * Base URL of the MandateZ dashboard hosting the verify endpoint.
-   * Defaults to the public production deployment.
+   * Falls back to the `MANDATEZ_DASHBOARD_URL` env var, then errors if
+   * neither is provided. There is intentionally no public-default fallback —
+   * the SDK refuses to silently target a host the caller did not pick.
    */
   apiUrl?: string;
+  /** Optional fetch timeout in ms. Defaults to 15s. */
+  timeoutMs?: number;
 }
 
-const DEFAULT_API_URL = 'https://dashboard.mandatez.com';
 const ATTESTATION_ID_RE = /^att_[A-Za-z0-9_-]+$/;
+
+const AttestationViolationSchema = z.object({
+  event_id: z.string(),
+  timestamp: z.string(),
+  action_type: z.string(),
+  resource: z.string(),
+  outcome: z.enum(['blocked', 'flagged']),
+});
+
+const AttestationRecordSchema = z.object({
+  id: z.string(),
+  agent_id: z.string(),
+  owner_id: z.string(),
+  window_start: z.string(),
+  window_end: z.string(),
+  event_count: z.number(),
+  events_hash: z.string(),
+  verdict: z.enum(['clean', 'flagged', 'violations_detected']),
+  violations: z.array(AttestationViolationSchema),
+  platform_signature: z.string(),
+  platform_public_key: z.string(),
+  metadata: z.record(z.string(), z.unknown()),
+  created_at: z.string(),
+}) satisfies z.ZodType<AttestationRecord>;
+
+const VerifyAttestationResponseSchema = z.object({
+  valid: z.boolean(),
+  attestation: AttestationRecordSchema,
+  verified_at: z.string(),
+}) satisfies z.ZodType<VerifyAttestationResponse>;
+
+function resolveApiUrl(optsApiUrl?: string): string {
+  const candidate =
+    optsApiUrl ??
+    (typeof process !== 'undefined' ? process.env?.MANDATEZ_DASHBOARD_URL : undefined);
+  if (!candidate) {
+    throw new Error(
+      'verifyAttestation: apiUrl is required. Pass options.apiUrl or set the MANDATEZ_DASHBOARD_URL environment variable.',
+    );
+  }
+  return candidate.replace(/\/+$/, '');
+}
 
 /**
  * Fetches and verifies a MandateZ attestation by its id.
@@ -49,8 +102,13 @@ const ATTESTATION_ID_RE = /^att_[A-Za-z0-9_-]+$/;
  * signature server-side, so a `valid: true` response from a trusted
  * MandateZ host is sufficient proof that the row is unmodified.
  *
+ * Throws {@link MandateZHttpError} on network failure, timeout, non-JSON
+ * response, or unexpected response shape.
+ *
  * @example
- * const result = await verifyAttestation('att_abc123');
+ * const result = await verifyAttestation('att_abc123', {
+ *   apiUrl: 'https://dashboard.example.com',
+ * });
  * if (!result.valid) throw new Error('Attestation tampered');
  * console.log(result.attestation.verdict);
  */
@@ -62,17 +120,22 @@ export async function verifyAttestation(
     throw new Error('verifyAttestation: attestationId must start with att_');
   }
 
-  const base = (options.apiUrl ?? DEFAULT_API_URL).replace(/\/+$/, '');
-  const res = await fetch(`${base}/api/attestations/${attestationId}/verify`);
+  const base = resolveApiUrl(options.apiUrl);
+  const url = `${base}/api/attestations/${attestationId}/verify`;
+
+  const res = await fetchWithTimeout('verifyAttestation', url, {
+    method: 'GET',
+    timeoutMs: options.timeoutMs,
+  });
 
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(
-      err.error
-        ? `verifyAttestation failed: ${err.error}`
-        : `verifyAttestation failed: HTTP ${res.status}`,
-    );
+    throw new MandateZHttpError({
+      label: 'verifyAttestation',
+      url,
+      status: res.status,
+      reason: await readErrorMessage(res, `HTTP ${res.status}`),
+    });
   }
 
-  return (await res.json()) as VerifyAttestationResponse;
+  return parseJsonResponse('verifyAttestation', url, res, VerifyAttestationResponseSchema);
 }
