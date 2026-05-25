@@ -27,6 +27,15 @@ async function loadKeypair(): Promise<PlatformKeypair> {
     return cached;
   }
 
+  // Refuse the dev fallback in production. The seed below is in the
+  // repo — silently using it would sign real attestations with a
+  // publicly-known key. SCHEMA_AUDIT.md P1-8.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'platform-keys: MANDATEZ_PLATFORM_PRIVATE_KEY and MANDATEZ_PLATFORM_PUBLIC_KEY must be set in production',
+    );
+  }
+
   // Deterministic dev fallback. Same seed → same keypair, so attestations
   // signed in dev stay verifiable across restarts.
   const seed = sodium.from_base64(DEV_SEED_BASE64, sodium.base64_variants.ORIGINAL);

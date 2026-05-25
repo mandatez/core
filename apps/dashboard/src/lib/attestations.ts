@@ -241,12 +241,23 @@ export async function createAttestation(
 
 /**
  * Re-derives the canonical payload from a stored attestation row and
- * verifies the platform signature against the embedded public key.
+ * verifies the platform signature.
  *
- * Returns true only if the signature is valid AND was produced by the
- * platform key bound to the attestation — i.e. the row is unmodified.
+ * Returns true only if BOTH the signature is valid AND the row's
+ * platform_public_key matches the key this deployment actually holds.
+ * Verifying against the embedded key alone (the original behaviour) is
+ * trust-on-first-use: a row tampered to swap signature + public_key
+ * for a freshly-signed pair under any attacker key would pass. The
+ * platform key is *the* trust anchor — checking it twice (once to
+ * verify, once to identity-match) is what makes the anchor load-bearing.
+ *
+ * SCHEMA_AUDIT.md P0-5.
  */
 export async function verifyAttestationRecord(row: AttestationRecord): Promise<boolean> {
+  const livePlatformKey = await getPublicKey();
+  if (row.platform_public_key !== livePlatformKey) {
+    return false;
+  }
   const payload = canonicalAttestationPayload({
     id: row.id,
     agent_id: row.agent_id,
