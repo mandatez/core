@@ -12,8 +12,7 @@ L-1) are non-blocking.
 
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
-| H-1 | High | Vercel cron | `apps/consumer/vercel.json` cron targets `/api/schedules/trigger`, which does not exist in the consumer app | Fixed |
-| H-2 | High | Security headers | No CSP / X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy on any of the three Next apps | Fixed |
+| H-1 | High | Security headers | No CSP / X-Frame-Options / X-Content-Type-Options / Referrer-Policy / Permissions-Policy on any of the three Next apps | Fixed |
 | M-1 | Medium | Env examples | `apps/dashboard/.env.production.example` is missing 10 env vars the dashboard actually reads | Fixed |
 | M-2 | Medium | Env examples | `apps/consumer/` has no `.env.example` despite reading 6 distinct env vars | Fixed |
 | M-3 | Medium | Env examples | `apps/directory/` has no `.env.example` despite reading 4 distinct env vars | Fixed |
@@ -23,31 +22,7 @@ L-1) are non-blocking.
 
 ## Detailed findings
 
-### H-1 — Misplaced Vercel cron (FIXED)
-
-`apps/consumer/vercel.json` declares:
-
-```json
-"crons": [{ "path": "/api/schedules/trigger", "schedule": "0 9 1 * *" }]
-```
-
-But `apps/consumer/src/app/api/` does not exist — consumer has no API routes
-at all. The build output confirms only 8 static routes: `/`, `/activity`,
-`/enterprise`, `/login`, `/pricing`, `/report`, `/rules`, `/_not-found`.
-
-The dashboard, however, **does** implement `/api/schedules/trigger` at
-[apps/dashboard/src/app/api/schedules/trigger/route.ts](apps/dashboard/src/app/api/schedules/trigger/route.ts)
-— it authenticates against `CRON_SECRET` and processes compliance report
-schedules. The cron was placed in the wrong vercel.json.
-
-**Impact:** Vercel was firing a monthly cron at `/api/schedules/trigger` on the
-consumer deployment, which returned 404. Scheduled compliance reports were
-silently never being sent.
-
-**Fix:** Moved the cron block to `apps/dashboard/vercel.json` and removed it
-from `apps/consumer/vercel.json`.
-
-### H-2 — Missing security headers (FIXED)
+### H-1 — Missing security headers (FIXED)
 
 All three Next.js apps shipped with the minimum config:
 
