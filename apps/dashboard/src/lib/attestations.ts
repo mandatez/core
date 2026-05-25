@@ -43,11 +43,30 @@ interface CreateAttestationOptions {
 }
 
 /**
+ * Recursively sorts object keys so the canonical string depends on
+ * values only, never on insertion order. Same fix as
+ * packages/sdk/src/events/signing.ts — see SCHEMA_AUDIT.md P0-3.
+ *
+ * The original used JSON.stringify(parts, Object.keys(parts).sort()),
+ * which silently dropped every nested key (replacer-array whitelist
+ * applies recursively). `violations` was therefore never actually
+ * signed — only its array length leaked into the signature.
+ */
+function sortDeep(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(sortDeep);
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+    sorted[key] = sortDeep((value as Record<string, unknown>)[key]);
+  }
+  return sorted;
+}
+
+/**
  * Builds the canonical payload string used for signing and verification.
  *
- * Keys are sorted alphabetically and the structure is identical on both
- * sides — sign and verify use the exact same byte sequence so any drift
- * (key reordering, whitespace) breaks verification cleanly.
+ * Keys at every depth are sorted alphabetically so the byte sequence
+ * survives a JSONB round-trip (which does not preserve key order).
  */
 export function canonicalAttestationPayload(parts: {
   id: string;
@@ -61,7 +80,7 @@ export function canonicalAttestationPayload(parts: {
   violations: AttestationViolation[];
   platform_public_key: string;
 }): string {
-  return JSON.stringify(parts, Object.keys(parts).sort());
+  return JSON.stringify(sortDeep(parts));
 }
 
 /**

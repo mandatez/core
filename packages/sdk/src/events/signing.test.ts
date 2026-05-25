@@ -109,4 +109,55 @@ describe('verifyEvent', () => {
     const broken = { ...event, signature: '!!!not-base64!!!' };
     expect(await verifyEvent(broken)).toBe(false);
   });
+
+  // Regression: P0-2. canonicalize() used to pass an array as the second
+  // arg of JSON.stringify, which acts as a whitelist that drops every
+  // nested key. metadata was therefore never actually signed and could
+  // be mutated after the fact without breaking verification.
+  it('returns false when metadata is tampered with after signing', async () => {
+    const identity = await generateAgentIdentity();
+    const input: AgentEventInput = {
+      agent_id: identity.agent_id,
+      owner_id: 'org_acme',
+      action_type: 'export',
+      resource: 'database/users',
+      outcome: 'allowed',
+      policy_id: null,
+      metadata: { row_count: 5, target: 'csv' },
+    };
+    const event = await createSignedEvent(input, identity.private_key);
+
+    const tampered = { ...event, metadata: { row_count: 5_000_000, target: 'csv' } };
+    expect(await verifyEvent(tampered)).toBe(false);
+  });
+
+  // Regression: the canonical payload must depend on values only, not on
+  // the JS object's insertion order of keys. JSONB roundtrips do not
+  // preserve key order, so this is what makes verification survive
+  // SELECT-ing an event back out of Postgres.
+  it('verifies when metadata key order differs (JSONB round-trip)', async () => {
+    const identity = await generateAgentIdentity();
+    const input: AgentEventInput = {
+      agent_id: identity.agent_id,
+      owner_id: 'org_acme',
+      action_type: 'call',
+      resource: 'stripe/charges',
+      outcome: 'allowed',
+      policy_id: null,
+      metadata: { amount: 1000, currency: 'usd', idempotency_key: 'abc' },
+    };
+    const event = await createSignedEvent(input, identity.private_key);
+
+    // Rebuild the event with metadata keys in a different insertion order,
+    // simulating Postgres handing the row back to the JS client.
+    const reordered = {
+      ...event,
+      metadata: {
+        idempotency_key: event.metadata.idempotency_key,
+        currency: event.metadata.currency,
+        amount: event.metadata.amount,
+      },
+    };
+    expect(await verifyEvent(reordered)).toBe(true);
+  });
 });

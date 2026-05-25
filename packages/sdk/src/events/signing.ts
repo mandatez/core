@@ -4,13 +4,36 @@ import { AgentEventSchema } from './schema.js';
 import type { AgentEvent, AgentEventInput } from './schema.js';
 
 /**
+ * Recursively sorts object keys so JSON.stringify emits a byte sequence
+ * that depends only on values, never on insertion order. RFC 8785 JCS
+ * is the reference; this is a pragmatic subset (no number normalisation)
+ * sufficient for our event payloads.
+ *
+ * Why this exists: the previous implementation passed
+ * `Object.keys(event).sort()` as JSON.stringify's second arg. That
+ * silently dropped every nested key (the replacer-array whitelist is
+ * applied recursively), so `metadata` was never actually signed. See
+ * SCHEMA_AUDIT.md P0-2 and the regression test in signing.test.ts.
+ */
+function sortDeep(value: unknown): unknown {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(sortDeep);
+  const sorted: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+    sorted[key] = sortDeep((value as Record<string, unknown>)[key]);
+  }
+  return sorted;
+}
+
+/**
  * Builds the canonical payload string for signing/verification.
  *
- * Includes every field except `signature` itself, serialized with
- * sorted keys for deterministic output across platforms.
+ * Every field except `signature` itself is included, and keys at every
+ * depth are sorted alphabetically so the byte sequence survives a
+ * round-trip through JSONB storage (which does not preserve key order).
  */
-function canonicalize(event: Omit<AgentEvent, 'signature'>): string {
-  return JSON.stringify(event, Object.keys(event).sort());
+export function canonicalize(event: Omit<AgentEvent, 'signature'>): string {
+  return JSON.stringify(sortDeep(event));
 }
 
 /**
